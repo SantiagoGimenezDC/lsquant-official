@@ -1,4 +1,5 @@
-To compile please use
+To compile please use:
+
 mkdir build
 cd build
 cmake -DCMAKE_TOOLCHAIN_FILE=../toolchain-gcc.cmake  ..

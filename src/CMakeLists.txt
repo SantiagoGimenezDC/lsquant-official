@@ -121,3 +121,9 @@ set(MAIN inline_kpm-DOS-standalone )
 add_executable(${MAIN} inline_kpm-DOS-standalone.cpp )
 target_link_libraries(${MAIN} ${KPM_LIB} )
 
+set(MAIN inline_compute-Kubo-kpm-FFT-nonOrth.cpp )
+add_executable(${MAIN} inline_compute-Kubo-kpm-FFT-nonOrth.cpp )
+target_link_libraries(${MAIN} ${KPM_LIB} )
+
+
+

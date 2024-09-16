@@ -6,8 +6,6 @@
 namespace chebyshev 
 {
 
-
-
   
 void Kubo_solver_FFT::compute( SparseMatrixType &OPL, SparseMatrixType &OPR,  qstates::generator& gen ){
 
