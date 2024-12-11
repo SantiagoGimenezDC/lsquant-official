@@ -38,11 +38,19 @@ void SparseMatrixType::ConvertFromCOO(vector<indexType> &rows, vector<indexType>
 
 void SparseMatrixType::ConvertFromCSR(vector<indexType> &rowIndex, vector<indexType> &cols, vector<complex<double> > &vals)
 {
-	rows_ = vector<indexType>(rowIndex);
-	cols_ = vector<indexType>(cols);
-	vals_ = vector<complex<double> >(vals);
+  //============================================================================================================================================//
+  //
+  // 
+  //WARNING: proper implementation involves generating the rows_ cols_ and vals_ internal variables DIRECTLY, not passing them from elsewhere.  //
+  //
+  //
+  //============================================================================================================================================//
+  
+        rows_ = vector<indexType>(rowIndex);
+        cols_ = vector<indexType>(cols);
+        vals_ = vector<complex<double> >(vals);
 
-        indexType NNZ = vals_.size();
+        indexType NNZ = vals.size();
 
 	
 	matrix_ = Eigen::Map<Eigen::SparseMatrix<complex<double>, Eigen::RowMajor, indexType> >(rows_.size()-1, rows_.size()-1, NNZ, rows_.data(), cols_.data(), vals_.data());
