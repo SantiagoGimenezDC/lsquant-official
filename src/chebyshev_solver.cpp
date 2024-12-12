@@ -28,13 +28,14 @@ int chebyshev::ComputeMomTable( chebyshev::Vectors &chevVecL, chebyshev::Vectors
 	const size_t maxMR = sub.HighestMomentNumber(0);
 	const size_t maxML = sub.HighestMomentNumber(1);
 		
-	const int nthreads = omp_get_num_threads();
 //	mkl_set_num_threads_local(1); 
 	for( auto m0 = 0; m0 < maxML; m0++)
 	{
-		//#pragma omp parallel for default(none) shared(chevVecL,chevVecR,m0,sub)
-		for( auto m1 = 0; m1 < maxMR; m1++)
+	  //#pragma omp parallel for default(none) shared(chevVecL,chevVecR,m0,sub)
+	  for( auto m1 = 0; m1 < maxMR; m1++){
+
  		sub(m0,m1) = linalg::vdot( chevVecL.Vector(m0) , chevVecR.Vector(m1) );
+	  }
 	}
 //	mkl_set_num_threads_local(nthreads); 
 
@@ -55,7 +56,6 @@ int chebyshev::CorrelationExpansionMoments(	const vector_t& PhiR, const vector_t
 	const size_t NumMomsR = chebMoms.HighestMomentNumber();
 	const size_t NumMomsL = chebMoms.HighestMomentNumber();
 	const size_t momvecSize = (size_t)( numRVecs*numLVecs );
-
 
 	auto start = std::chrono::high_resolution_clock::now();
 	chebyshev::Moments2D sub(numLVecs,numRVecs);

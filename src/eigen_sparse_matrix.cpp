@@ -36,7 +36,31 @@ void SparseMatrixType::ConvertFromCOO(vector<indexType> &rows, vector<indexType>
 	//new (&matrix_) Eigen::Map<Eigen::SparseMatrix<complex<double>, Eigen::RowMajor> >(rows_.size(), cols_.size(), NNZ, rows_.data(), cols_.data(), vals_.data());
 };
 
-void SparseMatrixType::ConvertFromCSR(vector<indexType> &rowIndex, vector<indexType> &cols, vector<complex<double> > &vals)
+
+#include <cmath>
+#include <numeric> // For std::accumulate
+
+
+double compute_norm(const std::vector<complex<double>>& vec) {
+    // Compute the L2 norm (Euclidean norm)
+    double sum_of_squares = std::accumulate(vec.begin(), vec.end(), 0.0,
+        [](double sum, complex<double> val) {
+	  return sum + abs(val) * abs(val); // Add square of the element
+        });
+    return std::sqrt(sum_of_squares); // Return square root of the sum of squares
+}
+
+
+double compute_norm(const std::vector<indexType>& vec) {
+    // Compute the L2 norm (Euclidean norm)
+    double sum_of_squares = std::accumulate(vec.begin(), vec.end(), 0.0,
+        [](double sum, double val) {
+	  return sum + val * val; // Add square of the element
+        });
+    return std::sqrt(sum_of_squares); // Return square root of the sum of squares
+}
+
+void SparseMatrixType::ConvertFromCSR(vector<indexType> &cols, vector<indexType> &rowIndex, vector<complex<double> > &vals)
 {
   //============================================================================================================================================//
   //
@@ -52,8 +76,45 @@ void SparseMatrixType::ConvertFromCSR(vector<indexType> &rowIndex, vector<indexT
 
         indexType NNZ = vals.size();
 
-	
+
 	matrix_ = Eigen::Map<Eigen::SparseMatrix<complex<double>, Eigen::RowMajor, indexType> >(rows_.size()-1, rows_.size()-1, NNZ, rows_.data(), cols_.data(), vals_.data());
+
+
+	/*Buntcha testing
+	std::cout<<"NNZ: "<<NNZ<<"  rows size"<<rows_.size()<<"  cols size: "<<cols_.size()<<" vals_ size"<<vals_.size()  <<std::endl;
+        Eigen::SparseMatrix<complex<double>, Eigen::RowMajor, indexType> matrix_adj = matrix_.adjoint();
+	Eigen::SparseMatrix<complex<double>, Eigen::RowMajor, indexType> result = matrix_adj - matrix_;
+	
+	std::cout<<"matrix self adjointedness: "<<result.norm()  <<std::endl;
+	std::cout<<"rows: "<<compute_norm(rows_)  <<std::endl;
+	std::cout<<"cols: "<<compute_norm(cols_)  <<std::endl;
+	std::cout<<"vals: "<<compute_norm(vals_)  <<std::endl;
+
+
+
+
+	
+        const indexType* outer_indices = matrix_.outerIndexPtr(); // Column pointers
+        const indexType* inner_indices = matrix_.innerIndexPtr(); // Row indices
+        const complex<double>* values = matrix_.valuePtr();       // Non-zero values
+
+
+	vector<indexType> rows_2 = vector<indexType>(outer_indices, outer_indices + rows_.size()-1);
+        vector<indexType> cols_2 = vector<indexType>(inner_indices, inner_indices + NNZ );
+        vector<complex<double> > vals_2 = vector<complex<double> >(values, values + NNZ);
+
+
+	std::cout<<"NNZ: "<<NNZ<<"  rows size:"<<rows_2.size()<<"  cols size: "<<cols_2.size()<<" vals_ size"<<vals_2.size()  <<std::endl;	
+	std::cout<<"Second: "<<std::endl;
+	std::cout<<"rows_2: "<<compute_norm(rows_2)  <<std::endl;
+	std::cout<<"cols_2: "<<compute_norm(cols_2)  <<std::endl;
+	std::cout<<"vals_2: "<<compute_norm(vals_2)  <<std::endl;
+	*/
+
+
+
+
+	
 	
 	/*
         Eigen::SelfAdjointView<Eigen::SparseMatrix<double>, Eigen::Upper> symmetric_view(sparse_matrix); ->Maybe saves half the memory? Couldnt see the documentation
@@ -106,7 +167,9 @@ void SparseMatrixType::Multiply(const complex<double> a, const complex<double> *
 
 
 	eig_y = a * matrix_ * eig_x + b * eig_y; 
+	
 
+	  
 	return ;
 };
 

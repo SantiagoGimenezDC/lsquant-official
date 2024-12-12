@@ -105,9 +105,12 @@ public:
     vector<indexType> columns, rowIndex;
     vector<complex<double> > values;
     int dim;
-    Sparse::OPERATOR_FromCSRFile(input, dim, columns, rowIndex, values);
+
+    if(!Sparse::OPERATOR_FromCSRFile(input, dim, columns, rowIndex, values))
+      return;
+    
     _matrix_type->setDimensions(dim, dim);
-    _matrix_type->ConvertFromCSR(rowIndex, columns, values);
+    _matrix_type->ConvertFromCSR( columns,rowIndex, values);
     std::cout << "OPERATOR SUCCESSFULLY BUILT" << std::endl;
   }
   SparseMatrixType *_matrix_type;
