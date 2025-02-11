@@ -43,7 +43,7 @@ int chebyshev::Vectors_sliced::MultiplySliced( SparseMatrixType &OP, int s)
 	for(int m=0; m < this->NumberOfVectors(); m++ )
 	{
 	  linalg::introduce_segment(Chebmu_.ListElem(m), OPV(), segment_start);
-		OP.Multiply(  OPV(), tmp2 );
+	  OP.Multiply(1.0,OPV(),0.0,tmp2); //Multiply(  OPV(), tmp2 );
 	  linalg::extract_segment(tmp2, DIM,  Chebmu_.ListElem(m));
 	}
 

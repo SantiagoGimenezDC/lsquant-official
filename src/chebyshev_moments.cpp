@@ -15,8 +15,8 @@ void chebyshev::Moments::SetInitVectors( SparseMatrixType &OP ,const Moments::ve
 	//From now on this-> will be discarded in Chebyshev0() and Chebyshev1()
 
 	linalg::copy ( T0, this->Chebyshev1() );
-	OP.Multiply( this->Chebyshev1(), this->Chebyshev0() );
-	this->Hamiltonian().Multiply( this->Chebyshev0(), this->Chebyshev1() );
+	OP.Multiply( 1.0, this->Chebyshev1(), 0.0, this->Chebyshev0() );
+	this->Hamiltonian().Multiply( 1.0, this->Chebyshev0(), 0.0, this->Chebyshev1() );
 
 	return ;
 };
@@ -54,7 +54,7 @@ void chebyshev::Moments::SetInitVectors( const Moments::vector_t& T0 )
 	//From now on this-> will be discarded in Chebyshev0() and Chebyshev1()
 
 	linalg::copy ( T0, this->Chebyshev0() );
-	this->Hamiltonian().Multiply( this->Chebyshev0(), this->Chebyshev1() );
+	this->Hamiltonian().Multiply( 1.0, this->Chebyshev0(), 0.0, this->Chebyshev1() );
 };
 
 
@@ -79,7 +79,7 @@ void chebyshev::Moments1D_nonOrth::SetInitVectors_nonOrthogonal( Moments::vector
 
 	
 	linalg::copy ( T0, this->Chebyshev0() );	
-	this->Hamiltonian().Multiply( this->Chebyshev0(), tmp_ );
+	this->Hamiltonian().Multiply( 1.0, this->Chebyshev0(), 0.0, tmp_ );
         linalg::orthogonalize(*S_,  tmp_, this->Chebyshev1());
 
 	
@@ -110,10 +110,10 @@ void chebyshev::Moments1D_nonOrth::SetInitVectors_nonOrthogonal( SparseMatrixTyp
 
 
 	linalg::copy ( T0, this->Chebyshev1() );
-        OP.Multiply( this->Chebyshev1(), this->Chebyshev0() );
+        OP.Multiply( 1.0, this->Chebyshev1(), 0.0, this->Chebyshev0() );
 
 	
-	this->Hamiltonian().Multiply( this->Chebyshev0(), tmp_ );
+	this->Hamiltonian().Multiply( 1.0, this->Chebyshev0(), 0.0, tmp_ );
         linalg::orthogonalize(*S_, tmp_ , this->Chebyshev1());
 
 

@@ -79,8 +79,8 @@ void SparseMatrixType::ConvertFromCSR(vector<indexType> &cols, vector<indexType>
 
 	matrix_ = Eigen::Map<Eigen::SparseMatrix<complex<double>, Eigen::RowMajor, indexType> >(rows_.size()-1, rows_.size()-1, NNZ, rows_.data(), cols_.data(), vals_.data());
 
-
-	/*Buntcha testing
+	/*
+	//Buntcha testing
 	std::cout<<"NNZ: "<<NNZ<<"  rows size"<<rows_.size()<<"  cols size: "<<cols_.size()<<" vals_ size"<<vals_.size()  <<std::endl;
         Eigen::SparseMatrix<complex<double>, Eigen::RowMajor, indexType> matrix_adj = matrix_.adjoint();
 	Eigen::SparseMatrix<complex<double>, Eigen::RowMajor, indexType> result = matrix_adj - matrix_;
@@ -93,6 +93,7 @@ void SparseMatrixType::ConvertFromCSR(vector<indexType> &cols, vector<indexType>
 
 
 
+	std::cout<<matrix_.block(1999989,1999989,10,10)<<std::endl;
 	
         const indexType* outer_indices = matrix_.outerIndexPtr(); // Column pointers
         const indexType* inner_indices = matrix_.innerIndexPtr(); // Row indices
@@ -106,10 +107,10 @@ void SparseMatrixType::ConvertFromCSR(vector<indexType> &cols, vector<indexType>
 
 	std::cout<<"NNZ: "<<NNZ<<"  rows size:"<<rows_2.size()<<"  cols size: "<<cols_2.size()<<" vals_ size"<<vals_2.size()  <<std::endl;	
 	std::cout<<"Second: "<<std::endl;
-	std::cout<<"rows_2: "<<compute_norm(rows_2)  <<std::endl;
-	std::cout<<"cols_2: "<<compute_norm(cols_2)  <<std::endl;
-	std::cout<<"vals_2: "<<compute_norm(vals_2)  <<std::endl;
-	*/
+	std::cout<<"rows_2: "<<compute_norm(rows_2)-compute_norm(rows_)   <<std::endl;
+	std::cout<<"cols_2: "<<compute_norm(cols_2)-compute_norm(cols_)   <<std::endl;
+	std::cout<<"vals_2: "<<compute_norm(vals_2)-compute_norm(vals_)  <<std::endl;
+	*/	
 
 
 
