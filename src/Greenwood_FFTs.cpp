@@ -76,6 +76,7 @@ void Kubo_solver_FFT::Greenwood_FFTs(Vectors_sliced &chebVecL, Vectors_sliced &c
       for(int k=0; k<nump_; k++ ){
         thread_data[k] += real (
 				 ( real( re_bras(k) ) - im * real( im_bras(k) ) ) *
+				 //chebVecR.Vector(k)[l]
 				 ( real( re_kets(k) ) + im * real( im_kets(k) ) )
 			       );
 

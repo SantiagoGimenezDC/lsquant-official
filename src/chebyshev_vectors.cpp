@@ -10,7 +10,8 @@ int chebyshev::Vectors_sliced::IterateAllSliced(int s )
   
 	//The vectorss Chebyshev0() and Chebyshev1() are assumed to have
 	// been initialized
-       linalg::extract_segment( Chebyshev0(),  segment_start, Vector(0));
+
+        linalg::extract_segment( Chebyshev0(),  segment_start, Vector(0));
 	for(int m=1; m < this->NumberOfVectors(); m++ )
 	{
 	  linalg::extract_segment( Chebyshev1(),  segment_start, Vector(m));
@@ -43,8 +44,8 @@ int chebyshev::Vectors_sliced::MultiplySliced( SparseMatrixType &OP, int s)
 	for(int m=0; m < this->NumberOfVectors(); m++ )
 	{
 	  linalg::introduce_segment(Chebmu_.ListElem(m), OPV(), segment_start);
-	  OP.Multiply(1.0,OPV(),0.0,tmp2); //Multiply(  OPV(), tmp2 );
-	  linalg::extract_segment(tmp2, DIM,  Chebmu_.ListElem(m));
+	  OP.Multiply(1.0,OPV(),0.0, tmp2); //Multiply(  OPV(), tmp2 );
+	  linalg::extract_segment(tmp2, segment_start,  Chebmu_.ListElem(m));	  
 	}
 
 	return 0;
