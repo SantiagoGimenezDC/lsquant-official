@@ -22,25 +22,6 @@ void chebyshev::Moments::SetInitVectors( SparseMatrixType &OP ,const Moments::ve
 };
 
 
-
-	//light functions
-int chebyshev::Moments::JacksonKernelMomCutOff( const double broad )
-{
-	assert( broad >0 );
-	const double eta   =  2.0*broad/1000/this->BandWidth();
-	return ceil(M_PI/eta);
-};
-	
-//light functions
-double chebyshev::Moments::JacksonKernel(const double m,  const double Mom )
-{
-	const double
-	phi_J = M_PI/(double)(Mom+1.0);
-	return ( (Mom-m+1)*cos( phi_J*m )+ sin(phi_J*m)*cos(phi_J)/sin(phi_J) )*phi_J/M_PI;
-};
-
-
-
 void chebyshev::Moments::SetInitVectors( const Moments::vector_t& T0 )
 {
 	assert( T0.size() == this->SystemSize() );
@@ -58,6 +39,24 @@ void chebyshev::Moments::SetInitVectors( const Moments::vector_t& T0 )
 };
 
 
+
+
+
+	//light functions
+int chebyshev::Moments::JacksonKernelMomCutOff( const double broad )
+{
+	assert( broad >0 );
+	const double eta   =  2.0*broad/1000/this->BandWidth();
+	return ceil(M_PI/eta);
+};
+	
+//light functions
+double chebyshev::Moments::JacksonKernel(const double m,  const double Mom )
+{
+	const double
+	phi_J = M_PI/(double)(Mom+1.0);
+	return ( (Mom-m+1)*cos( phi_J*m )+ sin(phi_J*m)/tan(phi_J) )*phi_J/M_PI;
+};
 
 void chebyshev::Moments1D_nonOrth::SetInitVectors_nonOrthogonal( Moments::vector_t& T0 )
 {

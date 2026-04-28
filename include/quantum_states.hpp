@@ -9,6 +9,7 @@
 #include <vector>
 #include <complex>
 #include <numeric>
+#include <iostream>
 using namespace std; // for std::complex<double> , and std::vector
 
 
@@ -33,7 +34,7 @@ namespace qstates
 	{
 		public:
 
-		generator():count(0),dim(0),label("default"), num_states(1),kind(RANDOM_STATE){ srand(time(0));}
+	  generator():count(0),dim(0),label("default"), num_states(1),kind(RANDOM_STATE){ srand(time(0));}
 
 		int SystemSize() const
 		{
@@ -71,14 +72,15 @@ namespace qstates
 			{
 				switch (kind)
 				{
-					case LOCAL_STATE:					
-					        std::fill(out.begin(), out.end(), 0.0);
+					case LOCAL_STATE:
+						std::fill(out.begin(), out.end(), 0.0);
 						out[ spos[count] ] = 1.0;
 						break;
-						
 					case USER_STATE:
 						std::cout<<"Using vector at"<<spos[count]<<std::endl;
+						std::cout<<"With dimension: "<<count<<std::endl;
 						out.assign(data.begin()+spos[count] , data.begin()+spos[count]+ out.size() ); 
+
 						break;
 						
 						
@@ -92,7 +94,7 @@ namespace qstates
 							x = Complex(cos(phi)/norm,sin(phi)/norm );
 						}
 								
-					        //std::fill(out.begin(), out.end(), 0.0);
+					        //std::fill(out.begin(), out.etimend(), 0.0);
 						//out[count] = 1.0;
 						break;
 				}
@@ -170,6 +172,7 @@ namespace qstates
 		const int num = data.NumberOfStates();
 		data.data = std::vector< scalar >( size*num )  ;
 
+
 		
 		for ( int i = 0 ; i < num; i++ )
 		{
@@ -178,9 +181,10 @@ namespace qstates
 				double re,im;
 				file>>re>>im;
 				data.data[i*size + j] = std::complex<double>(re,im);
+				
 			};
 			data.spos.push_back(i*size);
-			std::cout<<"Added a vector at "<<data.spos[i]<<"="<<i*size<<std::endl;
+			
 		}
 	
 		return ;
@@ -211,7 +215,22 @@ namespace qstates
 			
 	return data;
 	};
-	
+
+
+
+	inline 
+	generator CreateLocalSet(std::vector<int> spos)
+	{
+		generator data;
+		data.kind = LOCAL_STATE;
+
+		data.NumberOfStates(spos.size());
+		data.spos=spos;
+		assert( data.spos.size() == data.num_states  );	
+	return data;
+	};
+
+
 	
 	inline
 	generator LoadStateFile( string filename)

@@ -239,7 +239,7 @@ void Kubo_solver_FFT_postProcess::Bastin_postProcess(const value_t final_data[],
   dataP.open(filename);
 
   for(int e=0;e<nump;e++)  
-    dataP<< a * rearranged_E_points[e] - b<<"  "<<  partial_result [e] <<std::endl;
+    dataP<< a * rearranged_E_points[e] + b<<"  "<<  partial_result [e] <<std::endl;
 
   dataP.close();
 
@@ -263,7 +263,7 @@ void Kubo_solver_FFT_postProcess::Bastin_postProcess(const value_t final_data[],
   data2.open(filename+"_integrand");
 
   for(int e=0;e<nump;e++)  
-    data2<< a * rearranged_E_points[e] - b<<"  "<<  integrand[e] <<std::endl;
+    data2<< a * rearranged_E_points[e] + b<<"  "<<  integrand[e] <<std::endl;
   
   data2.close();
 
@@ -373,7 +373,7 @@ void Kubo_solver_FFT_postProcess::Greenwood_postProcess(const value_t final_data
   dataP.open(filename);
 
   for(int e=0;e<nump;e++)  
-    dataP<<  a * rearranged_E_points[e]-b<<"  "<< partial_result [e] <<std::endl;
+    dataP<<  a * rearranged_E_points[e]+b<<"  "<< partial_result [e] <<std::endl;
 
   dataP.close();
 

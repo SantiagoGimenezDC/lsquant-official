@@ -30,9 +30,9 @@ class Kubo_solver_FFT{
         typedef double  r_value_t;
 
 
-        Kubo_solver_FFT(int M, int num_sections, int nump, formula sym_formula, chebyshev::Vectors_sliced& chebVec, std::string& outputfilename)
+        Kubo_solver_FFT(int M, int num_sections, int nump, formula sym_formula, chebyshev::Vectors_sliced& chebVecL, chebyshev::Vectors_sliced& chebVecR, std::string& outputfilename)
 	  : M_(M), num_sections_(num_sections), nump_(nump), section_size_(0),
-	    sym_formula_(sym_formula), chebVecL_(chebVec), chebVecR_(chebVec), outputfilename_(outputfilename) {};
+	    sym_formula_(sym_formula), chebVecL_(&chebVecL), chebVecR_(&chebVecR), outputfilename_(outputfilename) {};
 
         ~Kubo_solver_FFT(){};
   
@@ -55,7 +55,7 @@ class Kubo_solver_FFT{
 
 
         inline
-	chebyshev::Vectors_sliced Hamiltonian(){return chebVecL_; };
+	chebyshev::Vectors_sliced Hamiltonian(){return *chebVecL_; };
 
         inline
 	std::string& OutputFilename(){return outputfilename_;};
@@ -64,6 +64,7 @@ class Kubo_solver_FFT{
 	formula SolverFormula(){return sym_formula_;};
 
 
+        double relativeL2Norm(const value_t*, const value_t* );
   
         protected:  
         void allocate(Vectors_sliced& , Vectors_sliced& );
@@ -71,8 +72,8 @@ class Kubo_solver_FFT{
         void polynomial_recursion(const vector_t& , const vector_t& ,
 				  SparseMatrixType &,
 				  SparseMatrixType &,  
-				  Vectors_sliced &,
-				  Vectors_sliced &,
+				  Vectors_sliced *,
+				  Vectors_sliced *,
 				  value_t*);
 
 
@@ -108,13 +109,13 @@ class Kubo_solver_FFT{
 
 
   
-  
+
         private:
         int M_, num_sections_, nump_;
 	size_t section_size_;
         formula sym_formula_;
         chebyshev::Moments Hamiltonian_dummyMoms_;
-        chebyshev::Vectors_sliced chebVecL_, chebVecR_;
+        chebyshev::Vectors_sliced *chebVecL_, *chebVecR_;
 
         std::string outputfilename_;
 

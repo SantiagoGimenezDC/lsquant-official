@@ -21,6 +21,7 @@
 #include "kpm_noneqop.hpp" //Get Batch function
 #include "special_functions.hpp"
 
+
 namespace chebyshev
 {
 	typedef std::complex<double> value_t;	
@@ -33,6 +34,20 @@ namespace chebyshev
 	};
 
 
+	int MeanSquareDisplacement_DeviceSim(chebyshev::MomentsTD &, int , int , double , qstates::generator&   );
+  
+        std::vector<value_t> calculate_cn_bessel(double , double , double );
+
+        void evolution(chebyshev::MomentsTD &, std::vector<value_t>&, std::vector<value_t>&, std::vector<value_t>&, std::vector<value_t>& );      
+
+        void get_dXY2(chebyshev::MomentsTD&, std::vector<value_t>& , std::vector<value_t>&, int , int );
+
+        std::vector<value_t> MomentosDelta(chebyshev::MomentsTD&, const std::vector<value_t>&, int );
+
+  
+
+  
+  
 
 	int ComputeMomTable( chebyshev::Vectors &chevVecL, chebyshev::Vectors& chevVecR , chebyshev::Moments2D& sub);
 
@@ -47,11 +62,28 @@ namespace chebyshev
 	
 	int CorrelationExpansionMoments( SparseMatrixType &OPL, SparseMatrixType &OPR,  chebyshev::Moments2D &chebMoms, qstates::generator& gen );
 
-	int TimeDependentCorrelations( SparseMatrixType &OP, SparseMatrixType &PROJ,  chebyshev::MomentsTD &chebMoms, qstates::generator& gen);
+	int TimeDependentCorrelations( SparseMatrixType &OPL, SparseMatrixType &OPR,  chebyshev::MomentsTD &chebMoms, qstates::generator& gen);
 
 	int SpectralMoments(SparseMatrixType &OP,  chebyshev::Moments1D &chebMoms, qstates::generator& gen);
 
-  	int SpectralMoments_nonOrth(SparseMatrixType &OP, chebyshev::Moments1D_nonOrth &chebMoms, qstates::generator& gen);
+        int SpectralMoments_S_inv(SparseMatrixType &OP,  chebyshev::Moments1D &chebMoms, qstates::generator& gen, std::array<double,2> spectral_bounds);
+
+  
+        int SpectralMoments_nonOrth(SparseMatrixType &OP, chebyshev::Moments1D_nonOrth &chebMoms, qstates::generator& gen);
+	
+        int TimeEvolvedProjectedOperator(SparseMatrixType &OP, SparseMatrixType &OPPRJ,  chebyshev::MomentsTD &chebMoms, qstates::generator& gen  );
+
+        int TimeEvolvedOperator(SparseMatrixType &OP,  chebyshev::MomentsTD &chebMoms, qstates::generator& gen  );
+
+	int MeanSquareDisplacement(chebyshev::MomentsTD &chebMoms, qstates::generator& gen  );
+
+	int TimeEvolvedProjectedOperatorWF(SparseMatrixType &OP, SparseMatrixType &OPRJ,  chebyshev::MomentsTD &chebMoms, qstates::generator& gen  );
+    
+      	int TimeEvolvedOperatorWithWF(chebyshev::MomentsTD &chebMoms, qstates::generator& gen  );
+
+	int ComputeDeltaPhi( SparseMatrixType &OP,  chebyshev::MomentsLocal &chebMoms, qstates::generator& gen);
+
+	int ComputeDeltaPhi2( SparseMatrixType &OP,  chebyshev::MomentsTD &chebMoms, qstates::generator& gen ,double Energy);
 
         int SpectralMoments_nonOrth_test(SparseMatrixType &OP, SparseMatrixType &orth_Ham, chebyshev::Moments1D_nonOrth &chebMoms, qstates::generator& gen);
 

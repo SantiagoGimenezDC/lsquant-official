@@ -42,22 +42,21 @@ int main(int argc, char *argv[])
         int num_sections = 1, nump = numMoms;
 	chebyshev::formula sym_formula = chebyshev::KUBO_GREENWOOD;
 	//chebyshev::Moments Hamiltonian_dummyMoms; //load number of moments
-
-	chebyshev::Vectors_sliced 
-	  chebVec( numMoms, num_sections );
                 
 
-	SparseMatrixType OP[3];
+	SparseMatrixType OP[5];
 	OP[0].SetID("HAM");
 	OP[1].SetID( "S" );
+	OP[2].SetID( "dSdK" );
+	OP[3].SetID( "dHdK" );
 
-	OP[2].SetID(S_OPR);
-	OP[3].SetID(S_OPL);
+	//OP[2].SetID(S_OPR);
+	//OP[3].SetID(S_OPL);
 
 	// Build the operators from Files
 	SparseMatrixBuilder builder;
 	std::array<double,2> spectral_bounds;	
-	for (int i = 0; i < 3; i++)
+	for (int i = 0; i < 4; i++)
 	{
 		std::string input = "operators/" + LABEL + "." + OP[i].ID() + ".CSR";
 		builder.setSparseMatrix(&OP[i]);
@@ -68,6 +67,8 @@ int main(int argc, char *argv[])
 		 spectral_bounds = chebyshev::utility::SpectralBounds(OP[0]);
 	};
 
+
+	/*Testing
 	Eigen::SparseMatrix<complex<double>, Eigen::RowMajor, indexType>
 	  H = OP[0].eigen_matrix(),
 	  S = OP[1].eigen_matrix(),
@@ -85,6 +86,13 @@ int main(int argc, char *argv[])
 	H=S_inv * H;
 	x1=H*x1 - x1*H;
 	x2=H*x2 - x2*H;
+	*/
+
+
+  
+	chebyshev::Vectors_sliced_nonOrthogonal 
+	  chebVec( OP[1],OP[2], OP[3], numMoms, num_sections ),
+          chebVec_2( OP[1],OP[2], OP[3], numMoms, num_sections );
 
 	
 	//CONFIGURE THE CHEBYSHEV MOMENTS
@@ -92,11 +100,15 @@ int main(int argc, char *argv[])
 	chebVec.BandWidth ( (spectral_bounds[1]-spectral_bounds[0])*1.0);
         chebVec.BandCenter( (spectral_bounds[1]+spectral_bounds[0])*0.5);
 	chebVec.SetAndRescaleHamiltonian(OP[0]);
+
+	chebVec_2 = chebVec;
 	
 
 	//Define thes states youll use
 	//Factory state_factory ;
 
+
+	
 	//Compute the chebyshev expansion table
 	qstates::generator gen;
 	if( argc == 6)	
@@ -104,13 +116,14 @@ int main(int argc, char *argv[])
 
 	std::string outputfilename="Greenwood_FFT"+S_OPR+"-"+S_OPL+LABEL+"KPM_M"+S_NUM_MOM+"x"+S_NUM_MOM+"_state"+gen.StateLabel()+".conductivity_nonOrth";
 
-	chebyshev::Kubo_solver_FFT solver(numMoms,  num_sections, nump, sym_formula, chebVec,  outputfilename);
-	solver.compute( OP[1], OP[2], gen );
+	chebyshev::Kubo_solver_FFT solver(numMoms,  num_sections, nump, sym_formula, chebVec,chebVec_2,  outputfilename);
+	solver.compute( OP[0], OP[0], gen );
 
-	//Save the table in a file
+	
 
 
 
+	
 	std::cout<<"End of program"<<std::endl;
 	return 0;
 }

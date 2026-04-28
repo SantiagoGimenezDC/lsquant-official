@@ -57,7 +57,9 @@ void Kubo_solver_FFT::Greenwood_FFTs(Vectors_sliced &chebVecL, Vectors_sliced &c
     }
 
     for(int l = l_start; l < l_end; l++){
+      if(l<l_end){
 
+      
       for( int m = 0; m < M_; m++ ){
 	re_bras.input()[m] = pre_factors[m] * real( chebVecL.Vector(m)[l] );
         im_bras.input()[m] = pre_factors[m] * imag( chebVecL.Vector(m)[l] );
@@ -81,14 +83,17 @@ void Kubo_solver_FFT::Greenwood_FFTs(Vectors_sliced &chebVecL, Vectors_sliced &c
 			       );
 
       }
+      }
     }
-
+    
     # pragma omp critical
     {
       for(int k = 0; k < nump_; k++)
 	r_data[k] += thread_data[k];
     }
+    
   }
+  
 }
 
 

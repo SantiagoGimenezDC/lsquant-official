@@ -6,13 +6,30 @@
 namespace chebyshev 
 {
 
+
+  
+  double Kubo_solver_FFT::relativeL2Norm(const value_t new_data[], const value_t prev_data[]) {
+    double num = 0.0;
+    double denom = 0.0;
+
+    for (int i = nump_+1; i < 2*nump_-1; ++i) {
+      double diff = new_data[i].real() - prev_data[i].real();
+        num += diff * diff;
+        denom += prev_data[i].real() * prev_data[i].real();
+    }
+
+    //std::cout<<" Num: "<<num<<"   Denom:"<<denom<<std::endl;
+
+    return std::sqrt(num) / std::sqrt(denom);
+}
+
   
 void Kubo_solver_FFT::compute( SparseMatrixType &OPL, SparseMatrixType &OPR,  qstates::generator& gen ){
 
   time_station solver_station;
 
 
-  const size_t DIM = chebVecL_.SystemSize();
+  const size_t DIM = chebVecL_->SystemSize();
   Kubo_solver_FFT_postProcess postProcess(*this);
   section_size_ = DIM / num_sections_ +
                   DIM % num_sections_; //We are assuming */* is bigger than *%*. If not, i'd increase/decrease num_parts until it is.
@@ -26,10 +43,11 @@ void Kubo_solver_FFT::compute( SparseMatrixType &OPL, SparseMatrixType &OPR,  qs
   //Allocate the memory
   
   value_t
+    prev_r_data[2*nump_],
     r_data[2*nump_],
     final_data[2*nump_];	
 
-  allocate(chebVecL_, chebVecR_);
+  allocate(*chebVecL_, *chebVecR_);
 
   
   allocation_time.stop("\n \nAllocation time:            ");
@@ -40,12 +58,19 @@ void Kubo_solver_FFT::compute( SparseMatrixType &OPL, SparseMatrixType &OPR,  qs
 
   
   
-  gen.SystemSize(DIM);
 
-  while( gen.getQuantumState() )  {
+  int r=0;
+  double conv_crit = 0.0;
+
+  
+
+  while( r < 1)  { //gen.getQuantumState()    
     time_station randVec_time;
     std::cout<<"Computing with ID: "<<gen.count<<" states" <<std::endl;
 
+    
+    gen.SystemSize(DIM);
+    gen.getQuantumState();    
     //SELECT RUNNING TYPE
     polynomial_recursion(gen.State(),gen.State(), OPL, OPR, chebVecL_,chebVecR_, r_data);
 
@@ -59,8 +84,27 @@ void Kubo_solver_FFT::compute( SparseMatrixType &OPL, SparseMatrixType &OPR,  qs
      
      update_data(final_data, r_data, gen.count);
      postProcess(final_data, r_data, gen.count);
-     reset_data(r_data);
+
+
+     /*
+     if(r>0)
+       conv_crit = relativeL2Norm(final_data, prev_r_data);
+
+     */
+
+
      
+     for(int i=0;i<2*nump_;i++)
+       prev_r_data[i] = r_data[i];
+
+
+     
+     reset_data(r_data);
+
+
+     r++;
+
+
      time_postProcess.stop( "       Post-processing time:       ");
 
 
@@ -72,13 +116,15 @@ void Kubo_solver_FFT::compute( SparseMatrixType &OPL, SparseMatrixType &OPR,  qs
 
   
 
+
+
   
 
 void Kubo_solver_FFT::polynomial_recursion(const vector_t& PhiR, const vector_t& PhiL,
 				SparseMatrixType &OPL,
 				SparseMatrixType &OPR,  
-				Vectors_sliced &chebVecL,
-				Vectors_sliced &chebVecR,
+				Vectors_sliced *chebVecL,
+				Vectors_sliced *chebVecR,
 				value_t r_data[]){
 
 
@@ -93,11 +139,11 @@ void Kubo_solver_FFT::polynomial_recursion(const vector_t& PhiR, const vector_t&
 	  std::cout<< "   -Section: "<<s+1<<"/"<<num_sections_<<std::endl;
 
 
-	  
+	
 	  time_station csrmv_time_kets;
 	  
-	  chebVecL.SetInitVectors( OPL, PhiL );
-	  chebVecL.IterateAllSliced(s);
+	  chebVecL->SetInitVectors_2( OPL, PhiL );
+	  chebVecL->IterateAllSliced(s);
 
 	  
 	  
@@ -108,9 +154,9 @@ void Kubo_solver_FFT::polynomial_recursion(const vector_t& PhiR, const vector_t&
 
 	  time_station csrmv_time_bras;  
 
-	  chebVecR.SetInitVectors(  PhiR );
-	  chebVecR.IterateAllSliced(s);
-	  chebVecR.MultiplySliced( OPR, s );
+	  chebVecR->SetInitVectors_2(  PhiR );
+	  chebVecR->IterateAllSliced(s);
+	  chebVecR->MultiplySliced( OPR, s );
 		
 	  csrmv_time_bras.stop_add( &total_time_csrmv,  "           Bras cycle time:            ");
 
@@ -119,10 +165,10 @@ void Kubo_solver_FFT::polynomial_recursion(const vector_t& PhiR, const vector_t&
 	  time_station FFTs_time;
 
 	  if( sym_formula_ == KUBO_GREENWOOD )
-	    Greenwood_FFTs(chebVecL, chebVecR, r_data, s);
+	    Greenwood_FFTs(*chebVecL, *chebVecR, r_data, s);
 
           if( sym_formula_ == KUBO_BASTIN )
-	    Bastin_FFTs   (chebVecL, chebVecR, r_data, s);	
+	    Bastin_FFTs   (*chebVecL, *chebVecR, r_data, s);	
 
 	  FFTs_time.stop_add( &total_time_FFTs, "           FFT operations time:        ");
 

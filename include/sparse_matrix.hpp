@@ -62,9 +62,9 @@ public:
   void Multiply(const value_t a, const vector_t& x, const value_t b, vector_t& y);
   void Rescale(const value_t a,const value_t b);
   inline 
-  void Multiply(const value_t *x, value_t *y){ Multiply(value_t(1,0),x,value_t(0,0),y);};
+  void Multiply(const value_t *x, value_t *y){ Multiply(value_t(1.0,0),x,value_t(0,0),y);};
   inline 
-  void Multiply(const vector_t& x, vector_t& y){ Multiply(value_t(1,0),x,value_t(0,0),y);};
+  void Multiply(const vector_t& x, vector_t& y){ Multiply(value_t(1.0,0),x,value_t(0,0),y);};
 
 
   void BatchMultiply(const int batchSize, const value_t a, const value_t *x, const value_t b, value_t *y);

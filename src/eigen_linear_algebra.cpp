@@ -126,7 +126,6 @@ void linalg::batch_vdot(const int dim, const int batchSize, const std::complex<d
 
 
 
-
 void linalg::extract_segment(const std::vector< std::complex<double> >&x, size_t start_x,  std::vector< std::complex<double> >& y){//size_x >> size_y
 
 #pragma omp parallel for 
@@ -147,27 +146,28 @@ void linalg::introduce_segment(const std::vector< std::complex<double> >&x, std:
 
 void linalg::orthogonalize(SparseMatrixType& S, const std::vector< std::complex<double> >& original, std::vector< std::complex<double> >& orthogonalized){
 
-
+  
   Eigen::Map<const Eigen::Vector<std::complex<double>, -1>>
     eig_original(original.data(), original.size());
   Eigen::Map<Eigen::Vector<std::complex<double>, -1>>
     eig_orthogonalized(orthogonalized.data(), original.size());
 
 
-
+  //eig_orthogonalized=eig_original;
 
     
   Eigen::ConjugateGradient<  Eigen::SparseMatrix<std::complex<double>,  Eigen::RowMajor, indexType>, Eigen::Lower,  Eigen::DiagonalPreconditioner< std::complex<double>> > solver;
-  solver.setTolerance(0.0001); 
-  solver.setMaxIterations(20000); 
+  solver.setTolerance(0.0000001); 
+  solver.setMaxIterations(1000); 
   solver.compute(S.eigen_matrix());
   eig_orthogonalized = solver.solve(eig_original);
   
   
   std::cout << "#iterations:     " << solver.iterations() << std::endl;
+  /*
   std::cout << "  max#iterations:" << solver.maxIterations() << std::endl;
   std::cout << "estimated error: " << solver.error()      << std::endl;
   std::cout << "  tolerance :    " << solver.tolerance()      << std::endl;
   std::cout<<  "Vector norm :    " <<eig_original.norm()<<std::endl;    
-  
+  */
 };
