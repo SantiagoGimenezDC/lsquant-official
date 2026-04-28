@@ -93,7 +93,7 @@ int main(int argc, char *argv[])
 
 void time_evolution::printHelpMessage()
 	{
-		std::cout << "The program should be called with the following options: Label Op numMom numTimeSteps MaxTime (optional) num_states_file" << std::endl
+		std::cout << "The program should be called with the following options: Label numMom numTimeSteps MaxTime (optional) num_states_file" << std::endl
 				  << std::endl;
 		std::cout << "Label will be used to look for Label.Ham, Label.Op " << std::endl;
 		std::cout << "Op will be the velocity used to compute the evolution" << std::endl;

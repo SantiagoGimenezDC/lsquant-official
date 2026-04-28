@@ -377,9 +377,7 @@ int main()
     // ── COMPUTE PHYSICAL QUANTITIES ─────────────────
 
 
-    //MISSING: Here we should get the unit cell variables in a generic case somehow
-    double A_m2 = 1.0;
-    /*
+    
     double A1x = graph.unit_cell().A1x, A1y = graph.unit_cell().A1y, A2x = graph.unit_cell().A2x, A2y = graph.unit_cell().A2y, acc = graph.unit_cell().acc;
     int nuc = graph.unit_cell().nuc;
     
@@ -388,7 +386,7 @@ int main()
     // Area per atom [m²]
     double A_m2  = (A1x*A2y - A1y*A2x) * 1e-20 / nuc;
 
-    */
+    
 
 
     // Convert DOS from file units to [1/J/m²]: dos = 2*dos_file / A_m2 / Q
@@ -404,12 +402,12 @@ int main()
     std::vector<double> sigma_sc(nE+1, 0.0);
     std::vector<double> tp      (nE+1, 0.0);
 
-    //MISSING: We need a generic way to compute the fermi velocity. Joaquin's formula??
-    double vf = 1;
-    /*
+    
+    
+    
     // Graphene Fermi velocity  vF = (3/2) * acc[m] * t[eV] / hbar[eV·s]
     double vf    = 1.5 * (acc * 1e-10) * graph.params().teV / HBAR_EV;
-    */
+    
 
     // Carrier density n2D [1/m²] via cumulative trapezoidal integration
     // Subtract CNP value so n2D = 0 at the Dirac point
