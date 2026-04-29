@@ -11,7 +11,8 @@ set(APP_HEADERS
 
 set(APP_SOURCES
   #wannier_velocity_to_csr.cpp
-  wannier_hr_to_csr.cpp
+  #wannier_hr_to_csr.cpp
+  wannier_to_csr.cpp
 )
 # Set the build version. It will be used in the name of the lib, with corresponding
 # symlinks created. SOVERSION could also be specified for api version. 

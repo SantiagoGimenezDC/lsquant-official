@@ -455,6 +455,73 @@ int main()
     }
 
 
+
+
+
+    // ── Seebeck coefficient [μV/K] ────────────────────────────────────────────
+    // Uses generalised Mahan/BTE transport coefficients:
+    //   K_n[E] = (σ_sc ★ E^n·dfdE)[E] · dE       (same-mode convolution)
+    //   S[E]   = (1/T) · K1[E]/K0[E] · 1e6
+    //
+    // dfdE[i] = -df/dE = 1 / (cosh(E[i]/(2kT)))² / (4kT)   (Fermi window)
+    // h_Planck in SI = 6.62607015e-34 J·s
+    // ─────────────────────────────────────────────────────────────────────────
+    const double T_K    = 300.0;                        // temperature [K]
+    const double e      = 1.602e-19;                    // electron volt in Joules
+    const double kB     = 1.380649e-23 / e;             // Boltzmann [e/K]
+    const double kT     = kB * T_K;                     // thermal energy [J]
+    const double dE_J   = (E.back() - E.front())  / std::max(nE, 1)       // energy step in eV
+     ;        // E array is in eV → ×Q
+
+    // Fermi window: dfdE[i] = 1 / cosh²(E[i]/(2kT)) / (4kT)
+    std::vector<double> dfdE(nE+1);
+    for (int iE = 0; iE <= nE; ++iE) {
+      double E_J  = E[iE];
+      double arg  = E_J / (2.0 * kT);
+      double ch   = std::cosh(arg);
+      dfdE[iE]    = 1.0 / (ch * ch) / (4.0 * kT);
+    }
+
+
+    
+    // Same-mode discrete convolution (linear, centred)
+    //   K_n[iE] = Σ_j  (E[j]^n · dfdE[j]) · sig_norm[iE - j + nE/2] · dE_J
+    // Equivalent to numpy's convolve(...,'same'): output index i gets
+    // contributions from kernel index k and signal index i-k+(N-1)/2.
+    std::vector<double> K0(nE+1, 0.0), K1(nE+1, 0.0);
+    const int half = nE / 2;
+    for (int iE = 0; iE <= nE; ++iE) {
+      double k0 = 0.0, k1 = 0.0;
+      for (int j = 0; j <= nE; ++j) {
+        int si = iE - j + half;                     // signal index
+        if (si < 0 || si > nE) continue;
+        double E_J  = E[j] ;
+        double kern = dfdE[j] * sigma_sc[si] * dE_J;
+        k0 += kern;                                 // E^0 · dfdE ★ σ
+        k1 += E_J * kern;                           // E^1 · dfdE ★ σ
+        
+      }
+      K0[iE] = k0;
+      K1[iE] = k1;
+    }
+
+    // Seebeck S[iE] = (1/T) · K1/K0 · 1e6  [μV/K]
+    std::vector<double> S_seebeck(nE+1, 0.0);
+    for (int iE = 0; iE <= nE; ++iE)
+      if (std::abs(K0[iE]) > 0.0)
+        S_seebeck[iE] = (1.0 / T_K) * (K1[iE] / K0[iE]) * 1e6;
+
+
+
+
+
+
+
+
+
+
+    
+
     // ── Write output files ────────────────────────────────────────────────────
     std::cout << "\nWriting output files...\n";
 
@@ -515,6 +582,16 @@ int main()
         writeMatrix("MSD_vs_t.txt", E, time, MSD_um);
     }
 
+
+
+        // Seebeck coefficient [µV/T]  (also writes n2D in cm⁻²)
+    {
+        std::ofstream f("Seebeck.txt");
+        f << std::scientific << std::setprecision(8);
+        for (int i = 0; i <= nE; ++i)
+            f << E[i] << "  " << S_seebeck[i] << "\n";
+        std::cout << "  Written Seebeck.txt\n";
+    }
 
 
 

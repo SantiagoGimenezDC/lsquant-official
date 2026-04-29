@@ -22,7 +22,7 @@ namespace time_evolution
 
 int main(int argc, char *argv[])
 {
-	if ( !(argc == 5 || argc == 6 ) )
+	if ( !(argc == 4 || argc == 5 ) )
 	{
 		time_evolution::printHelpMessage();
 		return 0;
@@ -52,7 +52,7 @@ int main(int argc, char *argv[])
 	// Build the operators from Files
 	SparseMatrixBuilder builder;
 	std::array<double,2> spectral_bounds;	
-	for (int i = 0; i < 2; i++)
+	for (int i = 0; i < 3; i++)
 	if( OP[i].isIdentity() )
 			std::cout<<"The operator "<<OP[i].ID()<<" is treated as the identity"<<std::endl;
 	else
@@ -69,7 +69,7 @@ int main(int argc, char *argv[])
 	chebMoms.SystemLabel(LABEL);
 	chebMoms.BandWidth ( (spectral_bounds[1]-spectral_bounds[0])*1.0);
 	chebMoms.BandCenter( (spectral_bounds[1]+spectral_bounds[0])*0.5);
-	chebMoms.TimeDiff( tmax/(numTimes-1) );
+	chebMoms.TimeDiff( tmax/(numTimes) );
 	chebMoms.SetAndRescaleHamiltonian(OP[0]);
 
 	chebMoms.SetAndRescaleVX_VY(OP[1],OP[2]);
@@ -95,8 +95,7 @@ void time_evolution::printHelpMessage()
 	{
 		std::cout << "The program should be called with the following options: Label numMom numTimeSteps MaxTime (optional) num_states_file" << std::endl
 				  << std::endl;
-		std::cout << "Label will be used to look for Label.Ham, Label.Op " << std::endl;
-		std::cout << "Op will be the velocity used to compute the evolution" << std::endl;
+		std::cout << "Label will be used to look for Label.Ham, Label.VX and Label.VY " << std::endl;
 		std::cout << "numMom will be used to set the number of moments in the chebyshev table" << std::endl;
 		std::cout << "numTimeSteps  will be used to set the number of timesteps in the chebyshev table" << std::endl;
 		std::cout << "TimeMax  will be set the maximum time where the correlation will be evaluted " << std::endl;

@@ -429,8 +429,8 @@ int main(int argc, char* argv[])
         std::cout << "Building H ... " << std::flush;
         H_mat = build_H(hr, N, M, P);
         std::cout << "nnz=" << H_mat.nonZeros() << "\n";
-        write_csr(prefix + "_H.CSR", H_mat);
-        std::cout << "  Written: " << prefix << "_H.CSR\n";
+        write_csr(prefix + "HAM.CSR", H_mat);
+        std::cout << "  Written: " << prefix << "HAM.CSR\n";
     }
 
     // ---- Build velocity components ----------------------------------------
@@ -441,9 +441,9 @@ int main(int argc, char* argv[])
         std::cout << "Building " << vname[a] << " ... " << std::flush;
         V[a] = build_V(hr, cell, centres, N, M, P, a);
         std::cout << "nnz=" << V[a].nonZeros() << "\n";
-        if (a==0 && do_Vx) { write_csr(prefix+"_Vx.CSR", V[a]); std::cout << "  Written: " << prefix << "_Vx.CSR\n"; }
-        if (a==1 && do_Vy) { write_csr(prefix+"_Vy.CSR", V[a]); std::cout << "  Written: " << prefix << "_Vy.CSR\n"; }
-        if (a==2 && do_Vz) { write_csr(prefix+"_Vz.CSR", V[a]); std::cout << "  Written: " << prefix << "_Vz.CSR\n"; }
+        if (a==0 && do_Vx) { write_csr(prefix+".VX.CSR", V[a]); std::cout << "  Written: " << prefix << ".VX.CSR\n"; }
+        if (a==1 && do_Vy) { write_csr(prefix+".VY.CSR", V[a]); std::cout << "  Written: " << prefix << ".VY.CSR\n"; }
+        if (a==2 && do_Vz) { write_csr(prefix+".VZ.CSR", V[a]); std::cout << "  Written: " << prefix << ".VZ.CSR\n"; }
     }
 
     // ---- Build spin components --------------------------------------------
@@ -454,9 +454,9 @@ int main(int argc, char* argv[])
         std::cout << "Building " << sname[a] << " ... " << std::flush;
         S[a] = build_S(hr.num_wann, N, M, P, a);
         std::cout << "nnz=" << S[a].nonZeros() << "\n";
-        if (a==0 && do_Sx) { write_csr(prefix+"_Sx.CSR", S[a]); std::cout << "  Written: " << prefix << "_Sx.CSR\n"; }
-        if (a==1 && do_Sy) { write_csr(prefix+"_Sy.CSR", S[a]); std::cout << "  Written: " << prefix << "_Sy.CSR\n"; }
-        if (a==2 && do_Sz) { write_csr(prefix+"_Sz.CSR", S[a]); std::cout << "  Written: " << prefix << "_Sz.CSR\n"; }
+        if (a==0 && do_Sx) { write_csr(prefix+".SX.CSR", S[a]); std::cout << "  Written: " << prefix << ".SX.CSR\n"; }
+        if (a==1 && do_Sy) { write_csr(prefix+".SY.CSR", S[a]); std::cout << "  Written: " << prefix << ".SY.CSR\n"; }
+        if (a==2 && do_Sz) { write_csr(prefix+".SZ.CSR", S[a]); std::cout << "  Written: " << prefix << ".SZ.CSR\n"; }
     }
 
     // ---- Build spin-current operators -------------------------------------
@@ -475,7 +475,7 @@ int main(int argc, char* argv[])
         SpMat JJ = build_SV(S[req.sa], V[req.vb]);
         std::cout << "nnz=" << JJ.nonZeros() << "\n";
         write_csr(prefix + "_" + req.name + ".CSR", JJ);
-        std::cout << "  Written: " << prefix << "_" << req.name << ".CSR\n";
+        std::cout << "  Written: " << prefix << "." << req.name << ".CSR\n";
     }
 
     // ---- Info file --------------------------------------------------------
@@ -487,6 +487,15 @@ int main(int argc, char* argv[])
              << "Ndim:      " << Ndim        << "\n";
     }
 
+    
+    // ---- uc file --------------------------------------------------------
+    {
+        std::ofstream uc(prefix + "_uc.txt");
+        uc << cell[0][0]  << " "<< cell[0][1] << " " << cell[0][2] << "\n"
+	   << cell[1][0]  << " "<< cell[1][1] << " " << cell[1][2] << "\n"
+	   << cell[2][0]  << " "<< cell[2][1] << " " << cell[2][2] << "\n";
+    }
+    
     std::cout << "\nDone.\n";
     return 0;
 }

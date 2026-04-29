@@ -49,12 +49,12 @@ int main(int argc, char *argv[])
 
 
 	
-	SparseMatrixType OP[1];
-	OP[0].SetID("DUMMY");
 
 	std::array<double,2> spectral_bounds;
-	spectral_bounds = chebyshev::utility::SpectralBounds(OP[0]);
 
+	spectral_bounds[0] = -6.75;
+	spectral_bounds[1] = 6.75;
+	
 	qstates::generator gen;
 	
   
@@ -63,7 +63,7 @@ int main(int argc, char *argv[])
 
 	double dT= tmax / double(numTimes);
 
-	std::cout<<"dT:  "<< dT<<std::endl;
+
 	chebyshev::MeanSquareDisplacement_Graphene_NNN_2(graphene, nMom_DOS, numTimes, dT,  gen);
 
 
@@ -92,6 +92,7 @@ int main(int argc, char *argv[])
 	   << "tmax      " << tmax      << "\n"
 	   << "tstep     " << tstep     << "\n"
 
+	  //These may be altered afterwards
 	   << "Emin      " << Emin      << "\n"
 	   << "Emax      " << Emax      << "\n"
 	   << "dE        " << dE        << "\n"
