@@ -86,6 +86,39 @@ int main(int argc, char *argv[])
 
 
 
+		//Post-processing data;
+	const double a     = spectral_bounds[1] - spectral_bounds[0];
+	const double b     = (spectral_bounds[1] + spectral_bounds[0]) * 0.5;
+	const double tstep = tmax / double(numTimes);
+
+	//Standard values for postprocessing
+	const double Emin  = -1.0;
+	const double Emax  =  1.0;
+	const double dE    =  0.001;
+	const double eta   =  0.00026;
+
+	std::ofstream pp("postProcess.dat");
+	if (!pp) throw std::runtime_error("Cannot open postProcess.dat");
+
+	pp << "a         " << a         << "\n"
+	   << "b         " << b         << "\n"
+	   << "nMom_DOS  " << numMoms  << "\n"
+	   << "size      " << 1.0      << "\n"
+	   << "numTimes  " << numTimes  << "\n"
+
+	   << "tmax      " << tmax      << "\n"
+	   << "tstep     " << tstep     << "\n"
+
+	  //These may be altered afterwards
+	   << "Emin      " << Emin      << "\n"
+	   << "Emax      " << Emax      << "\n"
+	   << "dE        " << dE        << "\n"
+	   << "eta       " << eta       << "\n";
+
+	pp.close();
+
+
+
 
 	std::cout<<"End of program"<<std::endl;
 	return 0;
