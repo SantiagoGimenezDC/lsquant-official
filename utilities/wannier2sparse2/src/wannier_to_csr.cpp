@@ -429,8 +429,8 @@ int main(int argc, char* argv[])
         std::cout << "Building H ... " << std::flush;
         H_mat = build_H(hr, N, M, P);
         std::cout << "nnz=" << H_mat.nonZeros() << "\n";
-        write_csr(prefix + "HAM.CSR", H_mat);
-        std::cout << "  Written: " << prefix << "HAM.CSR\n";
+        write_csr(prefix + ".HAM.CSR", H_mat);
+        std::cout << "  Written: " << prefix << ".HAM.CSR\n";
     }
 
     // ---- Build velocity components ----------------------------------------
@@ -474,7 +474,7 @@ int main(int argc, char* argv[])
                   << "} ... " << std::flush;
         SpMat JJ = build_SV(S[req.sa], V[req.vb]);
         std::cout << "nnz=" << JJ.nonZeros() << "\n";
-        write_csr(prefix + "_" + req.name + ".CSR", JJ);
+        write_csr(prefix + "." + req.name + ".CSR", JJ);
         std::cout << "  Written: " << prefix << "." << req.name << ".CSR\n";
     }
 
