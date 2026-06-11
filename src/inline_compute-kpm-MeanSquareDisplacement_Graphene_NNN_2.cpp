@@ -24,7 +24,7 @@ namespace time_evolution
 
 int main(int argc, char *argv[])
 {
-	if ( !(argc == 5 ) )
+	if ( !(argc == 6 ) )
 	{
 		time_evolution::printHelpMessage();
 		return 0;
@@ -36,16 +36,17 @@ int main(int argc, char *argv[])
 	        S_SIZE = argv[1],
 		S_NMOM = argv[2],
 	        S_NTIME= argv[3],
-		S_TMAX = argv[4];
+	  S_TMAX = argv[4],
+	  S_DIS_OPT = argv[5];
 
 	const int nMom_DOS = atoi(S_NMOM.c_str() );
 	const int size = atoi(S_SIZE.c_str() );
 	const int numTimes= atoi(S_NTIME.c_str() );
 	const double tmax = stod(S_TMAX );
-
+	const bool dis_opt = atoi(S_DIS_OPT.c_str() );
 
 	
-	Graphene_NNN graphene(size, false);
+	Graphene_NNN graphene(size, dis_opt, false);
 
 
 	
@@ -112,12 +113,13 @@ int main(int argc, char *argv[])
 
 void time_evolution::printHelpMessage()
 	{
-		std::cout << "The program should be called with the following options: Size numMom numTimeSteps MaxTime" << std::endl
+		std::cout << "The program should be called with the following options: Size numMom numTimeSteps MaxTime dis_opt" << std::endl
 				  << std::endl;
 		std::cout << "Size is the the graphene lattice lattice side length in number of unit cells " << std::endl;
 		std::cout << "numMom will be used to set the number of moments in the chebyshev table" << std::endl;
 		std::cout << "numTimeSteps  will be used to set the number of timesteps in the chebyshev table" << std::endl;
 		std::cout << "TimeMax  will be set the maximum time where the correlation will be evaluted " << std::endl;
+	        std::cout << "dis_opt is 1 to include disorder or 0 if no disorder is desired " << std::endl;
 	};
 
 	inline

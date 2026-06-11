@@ -43,7 +43,7 @@ int main(int argc, char *argv[])
 
 
 	
-	Graphene_NNN graphene(100, false);
+	Graphene_NNN graphene(100, true, false);
 
 	
 	chebyshev::Moments1D_Graphene_NNN chebMoms( graphene, numMoms ); //load number of moments

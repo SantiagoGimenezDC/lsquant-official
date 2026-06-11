@@ -205,7 +205,7 @@ void densite(int& nMom,
 int main()
 {
     // ── Step 0: parameters ───────────────────────────────────────────────────
-  Graphene_NNN graph(0, true);
+  Graphene_NNN graph(0, false, true);
 
     /*
     auto P = readNamelist("params_cpp.txt");
@@ -496,13 +496,13 @@ int main()
 
     
     // Same-mode discrete convolution (linear, centred)
-    //   K_n[iE] = Σ_j  (E[j]^n · dfdE[j]) · sig_norm[iE - j + nE/2] · dE_J
+    //   K_n[iE] = Σ_j  (E[j]^n · dfdE[j]) · sigma_sc[iE - j + nE/2] · dE_J
     // Equivalent to numpy's convolve(...,'same'): output index i gets
     // contributions from kernel index k and signal index i-k+(N-1)/2.
-    std::vector<double> K0(nE+1, 0.0), K1(nE+1, 0.0);
+    std::vector<double> K0(nE+1, 0.0), K1(nE+1, 0.0), K2(nE+1, 0.0);
     const int half = nE / 2;
     for (int iE = 0; iE <= nE; ++iE) {
-      double k0 = 0.0, k1 = 0.0;
+      double k0 = 0.0, k1 = 0.0, k2 = 0.0;
       for (int j = 0; j <= nE; ++j) {
         int si = iE - j + half;                     // signal index
         if (si < 0 || si > nE) continue;
@@ -510,10 +510,12 @@ int main()
         double kern = dfdE[j] * sigma_sc[si] * dE_J;
         k0 += kern;                                 // E^0 · dfdE ★ σ
         k1 += E_J * kern;                           // E^1 · dfdE ★ σ
+        k2 += E_J * E_J * kern;                           // E^2 · dfdE ★ σ
         
       }
       K0[iE] = k0;
       K1[iE] = k1;
+      K2[iE] = k2;
     }
 
     // Seebeck S[iE] = (1/T) · K1/K0 · 1e6  [μV/K]
@@ -522,6 +524,12 @@ int main()
       if (std::abs(K0[iE]) > 0.0)
         S_seebeck[iE] = (1.0 / T_K) * (K1[iE] / K0[iE]) * 1e6;
 
+
+    // Thermal conductivity kappa[iE] = (2/hT) · (K2-K1^2/K0) · 1e6  Units? [μeV/ K]?
+    std::vector<double> kappa(nE+1, 0.0);
+    for (int iE = 0; iE <= nE; ++iE)
+      if (std::abs(K0[iE]) > 0.0)
+        kappa[iE] = (2.0 / ( T_K)) * (K2[iE] - K1[iE] * K1[iE] / K0[iE]) * 1e6;
 
 
 
@@ -596,6 +604,16 @@ int main()
             f << E[i] << "  " << S_seebeck[i] << "\n";
         std::cout << "  Written Seebeck.txt\n";
     }
+
+    // Thermal conductivity [Units?]
+    {
+        std::ofstream f("thermal_conductivity.txt");
+        f << std::scientific << std::setprecision(8);
+        for (int i = 0; i <= nE; ++i)
+            f << E[i] << "  " << kappa[i] << "\n";
+        std::cout << "  Written thermal_conductivity.txt\n";
+    }
+
 
  
 

@@ -133,11 +133,14 @@ public:
     int Natoms(){return natoms;};
     // ── Constructor: builds the full Hamiltonian from hardcoded unit cell ────
 
-  Graphene_NNN(int size, bool isDummy )
+  Graphene_NNN(int size, bool dis_opt, bool isDummy )
     {
       p_.nrow = size;
       p_.ncol = size;
 
+      if(!dis_opt)
+	p_.Weh=0.0;
+      
       if(!isDummy)
         build(uc_, p_);
     }
