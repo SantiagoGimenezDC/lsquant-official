@@ -445,8 +445,16 @@ int main()
             sigma[iE][it] = Q * Q * dos[iE] * D[iE][it];
 
         // Semiclassical: max of D and σ over time
-        D_sc[iE]     = *std::max(D[iE].begin(),     D[iE].end());
-        sigma_sc[iE] = *std::max(sigma[iE].begin(), sigma[iE].end());
+
+	double max_D = 0.0;
+	double max_sigma = 0.0;
+	for (int it = 0; it <= nt; ++it){
+	  if( std::abs(D[iE][it]) > max_D ) max_D = D[iE][it];
+	  if( std::abs(sigma[iE][it]) > max_sigma ) max_sigma = sigma[iE][it];
+	}
+
+	D_sc[iE] = max_D;
+	sigma_sc[iE] = max_sigma;
 
         // Momentum relaxation time τ_p = 2*D_sc / vF²  [fs]
         tp[iE] = 2.0 * D_sc[iE] / (vf * vf) * 1e15;
