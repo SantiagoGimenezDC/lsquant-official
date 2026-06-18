@@ -174,7 +174,7 @@ std::vector<double> LorentzKernel(int N, double lambda)
 void densite(int& nMom,
              const std::vector<double>& mu,
              double Emin, double dE, int nE,
-             double eta, double a, 
+             double eta, double a, double b,
              std::vector<double>& dos)
 {
     const double lambda  = PI;
@@ -190,12 +190,16 @@ void densite(int& nMom,
     auto g = JacksonKernel(nMom);
 
     #pragma omp parallel for schedule(static)
-    for (int i = 0; i <= nE; ++i) {
-        double E    = (Emin + i * dE) / a ;
+    for (int i = 0; i <= nE; i++) {
+        double E    = (Emin + i * dE - b) / a ;
+
+	if(E>-0.99 && E<0.99){
         double suma = g[0] * mu[0];
         for (int n = 1; n < nMom; ++n)
-            suma += 2.0 * g[n] * mu[n] * std::cos(n * std::acos(E));
+	  suma += 2.0 * g[n] * mu[n] * std::cos(n * std::acos(E));
         dos[i] = suma / PI / std::sqrt(1.0 - E * E);
+	}
+	else dos[i]=0.0;
     }
 }
 
@@ -279,15 +283,18 @@ int main()
     
     std::cout << "tstep (ps) = " << tstep << "\n";
 
+
     const int nE = static_cast<int>((Emax - Emin) / dE);
 
     // ── Step 1: DOS from mu_01.txt ───────────────────────────────────────────
     std::vector<double> mu(nMom_DOS), mux(nMom_DOS), muy(nMom_DOS);
 
     {
-        std::ifstream f("mu_01.txt");
+      std::ifstream f("mu_01.txt");
         if (!f) throw std::runtime_error("Cannot open mu_01.txt");
         int idx; double im;
+
+
         for (int j = 0; j < nMom_DOS; ++j)
             f >> idx >> mu[j] >> im;
     }
@@ -300,7 +307,7 @@ int main()
     for (int j = 0; j <= nE; ++j) E[j] = (Emin + j * dE);
     
     
-    densite(nMom_DOS, mu, Emin, dE, nE, eta, a, dos);
+    densite(nMom_DOS, mu, Emin, dE, nE, eta, a, b, dos);
 
     {
         std::ofstream f("dos.txt");
@@ -336,8 +343,8 @@ int main()
 
         std::vector<double> dx2(nE + 1, 0.0), dy2(nE + 1, 0.0);
         int nMom_x = nMom_DOS, nMom_y = nMom_DOS;
-        densite(nMom_x, mux, Emin, dE, nE, eta, a, dx2);
-        densite(nMom_y, muy, Emin, dE, nE, eta, a, dy2);
+        densite(nMom_x, mux, Emin, dE, nE, eta, a, b, dx2);
+        densite(nMom_y, muy, Emin, dE, nE, eta, a, b, dy2);
 
         for (int j = 0; j <= nE; ++j) {
             all_dx2[j][i-1] = dx2[j] * normx * normx / dos[j];
@@ -377,8 +384,8 @@ int main()
     // ── COMPUTE PHYSICAL QUANTITIES ─────────────────
 
     //MISSING: Here we should get the unit cell variables in a generic case somehow    
-    double A_m2  = 1.0;
-    /*
+    //double A_m2  = 1.0;
+    
     double A1x = graph.unit_cell().A1x, A1y = graph.unit_cell().A1y, A2x = graph.unit_cell().A2x, A2y = graph.unit_cell().A2y, acc = graph.unit_cell().acc;
     int nuc = graph.unit_cell().nuc;
     
@@ -386,7 +393,7 @@ int main()
     double L2   = std::sqrt(A2x*A2x + A2y*A2y);
     // Area per atom [m²]
     double A_m2  = (A1x*A2y - A1y*A2x) * 1e-20 / nuc;
-    */
+    
     // Convert DOS from file units to [1/J/m²]: dos = 2*dos_file / A_m2 / Q
     for (size_t i = 0; i < dos.size();     ++i) dos[i]     = 2.0*dos[i]     / A_m2 / Q;
 
@@ -402,8 +409,8 @@ int main()
 
     //MISSING: We need a generic way to compute the fermi velocity. Joaquin's formula??
     // Graphene Fermi velocity  vF = (3/2) * acc[m] * t[eV] / hbar[eV·s]
-    double vf = 1;
-    //double vf    = 1.5 * (acc * 1e-10) * graph.params().teV / HBAR_EV;
+    //double vf = 1;
+    double vf    = 1.5 * (acc * 1e-10) * graph.params().teV / HBAR_EV;
 
 
     // Carrier density n2D [1/m²] via cumulative trapezoidal integration
@@ -430,7 +437,7 @@ int main()
 	  
         auto grad      = gradient_lownoise_N11(dL2_slice, tstep);
         for (int it = 0; it <= nt; ++it)
-            D[iE][it] = grad[it] / 4.0 * 1e-20 / 1e-15;
+	  D[iE][it] = grad[it] / 4.0 * 1e-20 / 1e-15;
         D[iE][0] = 0.0;
 
         // Conductivity σ(t) = e² * DOS * D  [1/Ω]
@@ -538,7 +545,7 @@ int main()
     {
         std::vector<double> dos_plot(nE+1);
         for (int i = 0; i <= nE; ++i)
-            dos_plot[i] = dos[i] * Q / 1e18;   // 1/J/m² → 1/eV/nm²
+	  dos_plot[i] = dos[i] * (Q / 1e18);   // 1/J/m² → 1/eV/nm²
         write2col("dos_plot.txt", E, dos_plot);
     }
 

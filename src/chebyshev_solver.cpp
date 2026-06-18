@@ -171,7 +171,6 @@ int chebyshev::MeanSquareDisplacement_DeviceSim(chebyshev::MomentsTD & H, int nM
 
 
 
-
 std::vector<cdouble> chebyshev::MomentosDelta(chebyshev::MomentsTD &  H,
                                           const std::vector<cdouble>&  psi,
                                           int                   nMom)
@@ -182,7 +181,7 @@ std::vector<cdouble> chebyshev::MomentosDelta(chebyshev::MomentsTD &  H,
     std::vector<cdouble> r_n(N), r_nm1(N);
 
     // ── mu[0] = <psi|psi> = 1 ────────────────────────────────────────────────
-    mu[0] = cdouble{1.0, 0.0};
+    mu[0] = linalg::vdot( psi, psi );//cdouble{1.0, 0.0};
 
     // ── Build r_nm1 = |psi>,  r_n = H_bar|psi> ───────────────────────────────
     // and collect mu[1] = <psi|H_bar|psi>,  mu[2] = 2<r_n|r_n> - mu[0]
@@ -192,23 +191,66 @@ std::vector<cdouble> chebyshev::MomentosDelta(chebyshev::MomentsTD &  H,
 
     H.Hamiltonian().Multiply ( 1.0, r_nm1.data(), 0.0, r_n.data());
 
-    mu[1] = linalg::vdot( psi, r_n ) - mu[1];
-    mu[2] = 2.0 * linalg::vdot( r_n, r_n ) - mu[0];
+    mu[1] = linalg::vdot( psi, r_n );
+    
+
+    // ── Main recursion: n = 3 .. nMom/2+1  (0-based: n-1 = 2 .. nMom/2) ─────
+    for (int n = 2; n < nMom + 1; n++) {
+        // One Chebyshev step + moment accumulation
+      
+        H.Hamiltonian().Multiply ( 2.0, r_n.data(), -1.0, r_nm1.data());
+        mu[n] =   linalg::vdot( psi, r_nm1) ;
+	
+
+        std::swap(r_n, r_nm1);
+    }
+
+
+    
+    return mu;
+}
+
+
+/*
+std::vector<cdouble> chebyshev::MomentosDelta(chebyshev::MomentsTD &  H,
+                                          const std::vector<cdouble>&  psi,
+                                          int                   nMom)
+{
+  const int N = H.SystemSize();
+
+    std::vector<cdouble> mu(nMom + 1, cdouble{0.0, 0.0});
+    std::vector<cdouble> r_n(N), r_nm1(N);
+
+    // ── mu[0] = <psi|psi> = 1 ────────────────────────────────────────────────
+    mu[0] = linalg::vdot( psi, psi );//cdouble{1.0, 0.0};
+
+    // ── Build r_nm1 = |psi>,  r_n = H_bar|psi> ───────────────────────────────
+    // and collect mu[1] = <psi|H_bar|psi>,  mu[2] = 2<r_n|r_n> - mu[0]
+
+
+    for (int i = 0; i < N; ++i) r_nm1[i] = psi[i];
+
+    H.Hamiltonian().Multiply ( 1.0, r_nm1.data(), 0.0, r_n.data());
+
+    mu[1] = linalg::vdot( psi, r_n );
+    mu[2] = 2.0 * linalg::vdot( r_n, r_n ) - mu[1];
 
     // ── Main recursion: n = 3 .. nMom/2+1  (0-based: n-1 = 2 .. nMom/2) ─────
     for (int n = 3; n <= nMom / 2 + 1; ++n) {
         // One Chebyshev step + moment accumulation
       
-        H.Hamiltonian().Multiply ( 2.0, r_nm1.data(), 0.0, r_n.data());
-        mu[2*n - 3] = linalg::vdot( psi, r_n ) - mu[1];
-	mu[2*n - 2] = 2.0 * linalg::vdot( r_n, r_n ) - mu[0];
+        H.Hamiltonian().Multiply ( 2.0, r_n.data(), -1.0, r_nm1.data());
+        mu[2*n - 3] =  2.0 * linalg::vdot( r_nm1, r_n ) - mu[1];
+	mu[2*n - 2] =  2.0 * linalg::vdot( r_nm1, r_nm1 ) - mu[0];
 
         std::swap(r_n, r_nm1);
     }
 
+    //for (int n = 1; n <nMom; n++) mu[n] *= 2.0;
+    
     return mu;
 }
-
+*/
 
 
 

@@ -87,8 +87,8 @@ int main(int argc, char *argv[])
 
 
 		//Post-processing data;
-	const double a     = spectral_bounds[1] - spectral_bounds[0];
-	const double b     = (spectral_bounds[1] + spectral_bounds[0]) * 0.5;
+	const double a     = (spectral_bounds[1] - spectral_bounds[0])/2.0;
+	const double b     = (spectral_bounds[1] + spectral_bounds[0])/2.0;
 	const double tstep = tmax / double(numTimes);
 
 	//Standard values for postprocessing

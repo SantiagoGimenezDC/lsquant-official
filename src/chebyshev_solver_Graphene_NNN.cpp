@@ -162,8 +162,6 @@ inline std::vector<cdouble> chebyshev::MomentosDelta(Graphene_NNN&  H,
         mu[2*n - 2] = sumb - mu[0];
 
         // Update: swap r_n <-> r_nm1
-        // After mv_2mu: r_nm1 = 2*H_bar*r_n_old - r_nm1_old  (new T_{n+1})
-        //               r_n   = old r_n  (still T_n, unchanged by mv_2mu)
         std::swap(r_n, r_nm1);
     }
 
