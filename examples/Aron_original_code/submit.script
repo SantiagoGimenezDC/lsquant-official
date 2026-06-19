@@ -1,0 +1,10 @@
+#!/bin/sh
+#
+# Number of cores per task
+#SBATCH -c 20
+#
+
+# Set OMP_NUM_THREADS to the same value as -c
+export OMP_NUM_THREADS=20
+
+srun ./a.out

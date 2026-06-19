@@ -301,7 +301,7 @@ int main()
 
     std::vector<double> dos(nE + 1, 0.0);
     std::vector<double> E(nE + 1, 0.0);
-    std::vector<double> time(nt + 1);
+    std::vector<double> time(nt);
     
     for (int i = 0; i <= nt; ++i) time[i] = i * tstep;
     for (int j = 0; j <= nE; ++j) E[j] = (Emin + j * dE);
@@ -312,7 +312,7 @@ int main()
     {
         std::ofstream f("dos.txt");
         for (int j = 0; j <= nE; ++j){
-	 
+	  dos[j]*=3.1415;
 	  f << std::setw(16) << (Emin + j * dE)
               << std::setw(16) << dos[j] / a  << "\n";
 	}
@@ -324,7 +324,7 @@ int main()
     std::vector<std::vector<double>> all_dy2(nE + 1, std::vector<double>(nt, 0.0));
     std::vector<std::vector<double>> dL2(nE + 1, std::vector<double>(nt, 0.0));
  
-    for (int i = 1; i <= nt; ++i) {
+    for (int i = 1; i < nt; ++i) {
         if (i % 10 == 0)
             std::cout << "time (ps) = " << i * tstep << "\n";
 
@@ -349,7 +349,12 @@ int main()
         for (int j = 0; j <= nE; ++j) {
             all_dx2[j][i-1] = dx2[j] * normx * normx / dos[j];
             all_dy2[j][i-1] = dy2[j] * normy * normy / dos[j];
+
+	    all_dy2[j][i-1] *= 350.0/6500.0;
+	    all_dx2[j][i-1] *= 350.0/6500.0;
+	    
 	    dL2[j][i-1] = all_dx2[j][i-1] + all_dy2[j][i-1];
+
         }
     }
 
@@ -363,7 +368,7 @@ int main()
         if (!f) throw std::runtime_error("Cannot open " + fname);
         // Header
         f << std::setw(16) << "# E(eV)";
-        for (int i = 1; i <= nt; ++i)
+        for (int i = 1; i < nt; ++i)
             f << std::setw(16) << (i * tstep);
         f << "\n";
         // Data
@@ -401,8 +406,8 @@ int main()
 
     
     // ── Compute D(t), sigma(t), and semiclassical quantities ─────────────────
-    std::vector<std::vector<double>> D    (nE+1, std::vector<double>(nt+1, 0.0));
-    std::vector<std::vector<double>> sigma(nE+1, std::vector<double>(nt+1, 0.0));
+    std::vector<std::vector<double>> D    (nE+1, std::vector<double>(nt, 0.0));
+    std::vector<std::vector<double>> sigma(nE+1, std::vector<double>(nt, 0.0));
     std::vector<double> D_sc    (nE+1, 0.0);
     std::vector<double> sigma_sc(nE+1, 0.0);
     std::vector<double> tp      (nE+1, 0.0);
@@ -431,30 +436,31 @@ int main()
     for (int iE = 0; iE <= nE; ++iE) {
         // Diffusivity D = d(dL2)/dt / 4  [m²/s]
         // Input dL2 in Å², time in fs → convert to m²/s: ×1e-20/1e-15 = ×1e-5
-	std::vector<double> dL2_slice(nt+1);
+	std::vector<double> dL2_slice(nt);
 	for (int it = 0; it < nt; ++it) dL2_slice[it] = dL2[iE][it];
 
 	  
         auto grad      = gradient_lownoise_N11(dL2_slice, tstep);
-        for (int it = 0; it <= nt; ++it)
-	  D[iE][it] = grad[it] / 4.0 * 1e-20 / 1e-15;
+        for (int it = 0; it < nt; ++it)
+	  D[iE][it] = grad[it] / 4.0  * 1e-5 /*(1e-20 / 1e-15*/ ;
         D[iE][0] = 0.0;
-
+	       
         // Conductivity σ(t) = e² * DOS * D  [1/Ω]
-        for (int it = 0; it <= nt; ++it)
-            sigma[iE][it] = Q * Q * dos[iE] * D[iE][it];
+        for (int it = 0; it < nt; ++it)
+            sigma[iE][it] = Q * Q * dos[iE] * D[iE][it] ;
 
         // Semiclassical: max of D and σ over time
 
 	double max_D = 0.0;
 	double max_sigma = 0.0;
-	for (int it = 0; it <= nt; ++it){
+	for (int it = 0; it < nt; ++it){
 	  if( std::abs(D[iE][it]) > max_D ) max_D = D[iE][it];
 	  if( std::abs(sigma[iE][it]) > max_sigma ) max_sigma = sigma[iE][it];
 	}
 
 	D_sc[iE] = max_D;
 	sigma_sc[iE] = max_sigma;
+	
 
         // Momentum relaxation time τ_p = 2*D_sc / vF²  [fs]
         tp[iE] = 2.0 * D_sc[iE] / (vf * vf) * 1e15;
@@ -581,7 +587,7 @@ int main()
     {
         std::vector<std::vector<double>> D_cm(nE+1, std::vector<double>(nt+1));
         for (int iE = 0; iE <= nE; ++iE)
-            for (int it = 0; it <= nt; ++it)
+            for (int it = 0; it < nt; ++it)
                 D_cm[iE][it] = D[iE][it] * 1e4;   // m²/s → cm²/s
 	writeMatrix("D_vs_t.txt", E, time, D_cm);
     }
@@ -590,7 +596,7 @@ int main()
     {
         std::vector<std::vector<double>> sig_G0(nE+1, std::vector<double>(nt+1));
         for (int iE = 0; iE <= nE; ++iE)
-            for (int it = 0; it <= nt; ++it)
+            for (int it = 0; it < nt; ++it)
                 sig_G0[iE][it] = sigma[iE][it] / G0;
         writeMatrix("sigma_vs_t.txt", E, time, sig_G0);
     }
@@ -601,7 +607,7 @@ int main()
     {
         std::vector<std::vector<double>> MSD_um(nE, std::vector<double>(nt+1));
         for (int iE = 0; iE < nE; ++iE)
-            for (int it = 0; it <= nt; ++it)
+            for (int it = 0; it < nt; ++it)
                 MSD_um[iE][it] = dL2[iE][it] / (1e4*1e4);   // Å² → µm²
         writeMatrix("MSD_vs_t.txt", E, time, MSD_um);
     }

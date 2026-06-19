@@ -1,0 +1,47 @@
+To run:
+
+cd operators
+python3 <lsquant-path>/lsquant-official/utilities/siesta2sparse/siesta2linqt.py graphene_SZ/RUN.fdf 100 100 --prefix graphene
+cd ..
+
+<lsquant-path>/lsquant-official/build/inline_compute-kpm-MeanSquareDisplacement_DeviceSim graphene 300 10 100 
+<lsquant-path>/lsquant-official/build/device-postProcess
+
+
+
+
+OVERVIEW:
+	This runs Aron's solver for a siesta kSpace hamiltonian of graphene. 
+	The solver "inline_compute-kpm-MeanSquareDisplacement_DeviceSim" can 
+	run Aron's solver for any hamiltonian matrix, real or k-space, as long 
+	as its orthogonal and in .CSR format
+
+
+BREAKDOWN OF THE COMMANDS:
+
+
+	1)This uses SISL to obtain a Siesta kSpace Hamiltonian in .CSR format :
+	python3 <lsquant-path>/lsquant-official/utilities/siesta2sparse/siesta2linqt.py graphene_SZ/RUN.fdf <KX> <KY> --prefix <output_name>
+		KX: Number of k-points in the x direction of the k-grid
+		KY: Number of k-points in the y direction of the k-grid
+		output_name: self-explanatory
+
+
+	2)The following runs the lsquant simulation required to obtain all the physical quantities:
+	<lsquant-path>/lsquant-official/build/inline_compute-kpm-MeanSquareDisplacement_DeviceSim  <siesta_source> <N_MOM> <N_TSTEPS> <T_MAX>
+
+   		D: Number of graphene unit cells in each direction of the superlattice
+      	   	( the superlattice will be DxD)
+   		N_MOM: Number of Chebyshev polynomials in the DOS expansion
+   		N_TSTEPS: Number of time steps of the time evolution
+   		T_MAX: maximum time of the time evolution
+
+
+
+	3)This script computes the desired physical quantities, such as DOS, conductivity  and Seebeck coefficient:
+	<lsquant-path>/lsquant-official/build/device-postProcess
+
+	It is missing a proper expression for the Fermi velocity, and also unit cell variables to compute unit cell volume.
+
+
+

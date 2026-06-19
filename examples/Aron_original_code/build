@@ -1,0 +1,8 @@
+f95 -O3 -fopenmp modules.f90 utils.f90 hamiltonian.f90 operators_omp_KPM_Patch.f90 wavepacket.f90 main.f90
+rm *.mod
+
+f95 -O3 -fopenmp -o process_spin   process_spin.f90
+f95 -O3 -fopenmp -o process_charge process_charge.f90
+
+export OMP_NUM_THREADS=20
+echo  $OMP_NUM_THREADS

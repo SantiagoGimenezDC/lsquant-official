@@ -152,8 +152,8 @@ int chebyshev::MeanSquareDisplacement_DeviceSim(chebyshev::MomentsTD & H, int nM
 
 		
     // ── 6. Time-evolution loop ────────────────────────────────────────────────
-    for (int it = 1; it <= nT; ++it) {
-        std::cout << "\n\nTime step = " << it << "\n";
+    for (int it = 1; it < nT; ++it) {
+      std::cout << "\n\nTime step = " << it << "  :  " << it*tstep << " fs \n";
 
         // Evolve psi, xupsi, yupsi by one step T:
         //   psi   →  U(T)|psi>
@@ -191,9 +191,10 @@ std::vector<cdouble> chebyshev::MomentosDelta(chebyshev::MomentsTD &  H,
 
     H.Hamiltonian().Multiply ( 1.0, r_nm1.data(), 0.0, r_n.data());
 
-    mu[1] = linalg::vdot( psi, r_n );
+    mu[1] =  linalg::vdot( psi, r_n );
     
 
+    
     // ── Main recursion: n = 3 .. nMom/2+1  (0-based: n-1 = 2 .. nMom/2) ─────
     for (int n = 2; n < nMom + 1; n++) {
         // One Chebyshev step + moment accumulation

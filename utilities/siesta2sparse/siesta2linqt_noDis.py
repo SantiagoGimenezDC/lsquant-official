@@ -2,14 +2,13 @@
 """
 siesta2linqt.py
 
-Reads a SIESTA .fdf file, builds a k-point grid of size kx × ky × kz,
+Reads a SIESTA .fdf file, builds a k-point grid of size kx × ky × 1,
 performs Löwdin orthogonalisation at each k-point, assembles the full
 supercell (block-diagonal) operators, and writes them as linqt .CSR files:
 
-    <prefix>.HAM.CSR    – Löwdin-orthogonalised Hamiltonian  H_ortho
-    <prefix>.VX.CSR     – velocity operator V_x
-    <prefix>.VY.CSR     – velocity operator V_y
-    <prefix>.BLOCH.CSR  – Bloch transform matrix B (atom gauge)
+    <prefix>.HAM   – Löwdin-orthogonalised Hamiltonian  H_ortho
+    <prefix>.VX    – velocity operator V_x
+    <prefix>.VY    – velocity operator V_y
 
 Löwdin velocity formula (from the non-orthogonal Kubo–Bastin literature):
 
@@ -21,31 +20,20 @@ Löwdin velocity formula (from the non-orthogonal Kubo–Bastin literature):
 
 where ∂_α ≡ ∂/∂k_α  (sisl's dHk / dSk, gauge='r').
 
-Bloch transform matrix (atom gauge):
-
-    B_{(ik,α),(R,β)} = δ_{αβ} / √N_k × exp(i k_ik · (R + τ_α))
-
-where τ_α is the Cartesian position of the atom hosting orbital α, and R
-is the real-space lattice vector of unit cell labelled by grid index iR.
-This unitary matrix maps the k-space block-diagonal basis to the real-space
-supercell basis, enabling the mixed-space disorder application:
-
-    H_full = H_k  +  B† V_disorder B
-
-where V_disorder is diagonal in real space.
-
 S^{-1/2} is computed via eigendecomposition of S (Hermitian positive-definite):
     S = U Λ U†  →  S^{-1/2} = U Λ^{-1/2} U†
+This is numerically more stable than sqrtm(inv(S)).
 
 Usage
 -----
     python siesta2linqt.py <fdf_file> <kx> <ky> [--prefix NAME]
-                           [--kz KZ] [--gauge GAUGE]
+                           [--kz KZ] [--no-vy] [--gauge GAUGE]
 
     fdf_file   path to SIESTA RUN.fdf (or equivalent)
     kx, ky     k-point grid dimensions
     --prefix   output file prefix  (default: derived from fdf filename)
     --kz       k-points along z    (default: 1)
+    --no-vy    skip V_y output
     --gauge    sisl gauge string   (default: 'r')
 
 Dependencies
@@ -62,26 +50,7 @@ import numpy as np
 import scipy.linalg as sla
 from scipy.sparse import csr_matrix, coo_matrix, block_diag
 
-def prune_and_sort(mat, tol=1e-6):
-    """
-    Remove entries with |value| < tol and sort column indices within each row
-    (required by Eigen's CSR format: indices must be strictly ascending per row).
-    """
-    mat = mat.tocsr()
 
-    # Prune small entries
-    mat.data[np.abs(mat.data) < tol] = 0.0
-    mat.eliminate_zeros()
-
-    # Sort column indices within each row (Eigen requirement)
-    mat.sort_indices()
-
-    # Collapse any duplicate indices that may have appeared
-    mat.sum_duplicates()
-
-    return mat
-    
-    
 # ─────────────────────────────────────────────────────────────────────────────
 # CSR writer  (linqt format)
 # ─────────────────────────────────────────────────────────────────────────────
@@ -235,106 +204,10 @@ def build_operators(H_source, kx: int, ky: int, kz: int, gauge: str):
     print("  Assembling block-diagonal matrices ...", end=' ', flush=True)
     H_blk  = block_diag(H_list,  format='csr')
     Vx_blk = block_diag(Vx_list, format='csr')
-    Vy_blk = block_diag(Vy_list, format='csr')
+    Vy_blk = block_diag(Vy_list, format='csr') 
     print("done")
 
-    return H_blk, Vx_blk, Vy_blk, Ks
-
-
-# ─────────────────────────────────────────────────────────────────────────────
-# Bloch transform matrix  B  (atom gauge)
-# ─────────────────────────────────────────────────────────────────────────────
-
-def build_bloch_transform(H_source, Ks: np.ndarray,
-                          kx: int, ky: int, kz: int) -> csr_matrix:
-    """
-    Build the Bloch transform matrix that maps the k-space block-diagonal
-    basis to the real-space supercell basis (atom gauge).
-
-    Matrix elements:
-        B_{(ik,α), (iR,β)} = δ_{αβ} / √N_k × exp(i k_ik · (R_iR + τ_α))
-
-    where:
-        k_ik   – Cartesian k-vector of grid point ik  (1/Å, includes 2π)
-        R_iR   – Cartesian position of unit cell iR within the supercell (Å)
-        τ_α    – Cartesian position of the atom hosting orbital α (Å)
-
-    The δ_{αβ} means the matrix is orbital-diagonal: only same-orbital
-    entries are nonzero, so each row has exactly N_k non-zero elements.
-
-    Parameters
-    ----------
-    H_source : sisl.Hamiltonian
-    Ks       : (N_k, 3) array of fractional k-coordinates (from build_operators)
-    kx,ky,kz : k-grid dimensions
-
-    Returns
-    -------
-    B : (N_k*W, N_k*W) unitary sparse CSR matrix
-    """
-    rcell = H_source.geometry.rcell  # (3,3) reciprocal lattice, rows, with 2π factor
-    cell  = H_source.geometry.cell   # (3,3) real-space lattice, rows (Å)
-    W     = H_source.no              # orbitals per unit cell
-    Nk    = len(Ks)
-    N     = Nk * W
-
-    # Map every orbital to the Cartesian position of its host atom
-    # H_source.geometry.a2o(ia, all=True) gives orbital indices for atom ia
-    xyz     = H_source.geometry.xyz          # (natoms, 3) in Å
-    tau_orb = np.zeros((W, 3), dtype=float)
-    for ia in range(H_source.na):
-        orbs = H_source.geometry.a2o(ia, all=True)
-        tau_orb[orbs] = xyz[ia]
-
-    # Cartesian k-vectors:  k_cart[ik] = Ks[ik] @ rcell  (1/Å, with 2π)
-    k_carts = Ks @ rcell                     # (Nk, 3)
-
-    # Real-space positions of supercell unit cells
-    # Ks stores fractional coords [n1/kx, n2/ky, n3/kz] → integer grid indices
-    n_grid = np.round(Ks * np.array([kx, ky, kz])).astype(int)  # (Nk, 3)
-    R_vecs = n_grid @ cell                   # (Nk, 3) in Å
-
-    # Lattice part of the phase: phase_lat[ik, iR] = k_ik · R_iR
-    phase_lat = k_carts @ R_vecs.T           # (Nk, Nk)
-
-    inv_sqrt_Nk = 1.0 / np.sqrt(Nk)
-
-    # Build in COO format.  For each orbital α, the subblock is a dense Nk×Nk
-    # matrix placed at row-stride W (rows ik*W+α) and col-stride W (cols iR*W+α).
-    nnz      = Nk * Nk * W
-    row_arr  = np.empty(nnz, dtype=np.int64)
-    col_arr  = np.empty(nnz, dtype=np.int64)
-    data_arr = np.empty(nnz, dtype=np.complex128)
-
-    ik_idx = np.arange(Nk, dtype=np.int64)
-    iR_idx = np.arange(Nk, dtype=np.int64)
-
-
-    for alpha in range(W):
-        phase_atom  = k_carts @ tau_orb[alpha]
-        phase_total = phase_lat + phase_atom[:, np.newaxis]
-        B_alpha     = inv_sqrt_Nk * np.exp(1j * phase_total)   # (Nk, Nk)
-
-        # Explicit (Nk, Nk) index arrays via meshgrid
-        rows_2d, cols_2d = np.meshgrid(
-            ik_idx * W + alpha,   # row indices: ik*W + alpha
-            iR_idx * W + alpha,   # col indices: iR*W + alpha
-            indexing='ij'         # rows_2d[ik, iR], cols_2d[ik, iR]
-        )
-
-        sl = slice(alpha * Nk * Nk, (alpha + 1) * Nk * Nk)
-        row_arr [sl] = rows_2d.ravel()
-        col_arr [sl] = cols_2d.ravel()
-        data_arr[sl] = B_alpha.ravel()
-        
-
-    B = coo_matrix((data_arr, (row_arr, col_arr)), shape=(N, N)).tocsr()
-
-    # Sanity check: B should be unitary  →  max|B†B - I| should be ~1e-12
-    err = abs((B.conj().T @ B) - np.eye(N)).max()
-    print(f"  Unitarity check  max|B†B - I| = {err:.2e}")
-
-    return B
+    return H_blk, Vx_blk, Vy_blk
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -344,7 +217,7 @@ def build_bloch_transform(H_source, Ks: np.ndarray,
 def main():
     parser = argparse.ArgumentParser(
         description="Löwdin-orthogonalise a SIESTA Hamiltonian and write "
-                    "H, Vx, Vy, and the Bloch transform matrix as linqt .CSR files."
+                    "H, Vx, Vy as linqt .CSR files."
     )
     parser.add_argument("fdf_file",        help="Path to SIESTA .fdf file")
     parser.add_argument("kx",  type=int,   help="k-points along a1")
@@ -354,9 +227,6 @@ def main():
     parser.add_argument("--prefix", default=None,
                         help="Output file prefix (default: fdf stem)")
     parser.add_argument("--gauge", default="r",
-                        help="sisl gauge string (default: 'r')")
-                        
-    parser.add_argument("--Bloch", default=False,
                         help="sisl gauge string (default: 'r')")
     args = parser.parse_args()
 
@@ -375,44 +245,22 @@ def main():
     except Exception as e:
         sys.exit(f"Error reading SIESTA file: {e}")
 
-    print(f"  orbitals per cell (W): {H_src.no}")
+    print(f"  orbitals per cell (num_wann): {H_src.no}")
     print(f"  spin class: {H_src.spin}")
 
-    # ── Build Löwdin operators ────────────────────────────────────────────────
+    # ── Build operators ───────────────────────────────────────────────────────
     print(f"\nBuilding Löwdin operators on {args.kx}×{args.ky}×{args.kz} grid ...")
-    H_blk, Vx_blk, Vy_blk, Ks = build_operators(
-        H_src, args.kx, args.ky, args.kz, gauge=args.gauge
+    H_blk, Vx_blk, Vy_blk = build_operators(
+        H_src, args.kx, args.ky, args.kz,
+        gauge=args.gauge
     )
-
-    # ── Build Bloch transform matrix ──────────────────────────────────────────
-    if(args.Bloch == True):
-    	print("\nBuilding Bloch transform matrix (atom gauge) ...")
-    	B = build_bloch_transform(H_src, Ks, args.kx, args.ky, args.kz)
 
     # ── Write outputs ─────────────────────────────────────────────────────────
     print("\nWriting CSR files ...")
     write_linqt_csr(H_blk,  f"{prefix}.HAM.CSR")
     write_linqt_csr(Vx_blk, f"{prefix}.VX.CSR")
     write_linqt_csr(Vy_blk, f"{prefix}.VY.CSR")
-    
-    if(args.Bloch == True):    
-    	write_linqt_csr(B,      f"{prefix}.BLOCH.CSR")
 
-
-
-    """
-    # ── Write test outputs ─────────────────────────────────────────────────────────
-    Hr_blk  = prune_and_sort(B.conj().T @ H_blk  @ B)
-    Vxr_blk = prune_and_sort(B.conj().T @ Vx_blk @ B)
-    Vyr_blk = prune_and_sort(B.conj().T @ Vy_blk @ B)
-        
-    print("\nWriting CSR files ...")
-    write_linqt_csr(Hr_blk,  f"{prefix}_r.HAM.CSR")
-    write_linqt_csr(Vxr_blk, f"{prefix}_r.VX.CSR")
-    write_linqt_csr(Vyr_blk, f"{prefix}_r.VY.CSR")
-    """    
-    
-    
     print("\nAll done.")
 
 

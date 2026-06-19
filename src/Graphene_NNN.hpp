@@ -232,7 +232,7 @@ public:
 
         }
 
-	suma = 2.0*cdouble(re_suma, im_suma);
+	suma = 2.0 * cdouble(re_suma, im_suma);
         sumb = 2.0 * re_sumb ; // 2<r_n|r_n>      
     }
 

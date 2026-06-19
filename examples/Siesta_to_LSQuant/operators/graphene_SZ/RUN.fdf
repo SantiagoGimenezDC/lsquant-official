@@ -1,0 +1,48 @@
+SystemName graphene
+SystemLabel graphene
+
+# Include Geomety file
+%include structure.fdf
+
+PAO.BasisSize SZ
+PAO.EnergyShift  200 meV
+PAO.SplitNorm      0.15
+PAO.OldStylePolOrbs F
+
+XC.functional           GGA
+XC.authors              PBE
+
+MeshCutoff              500. Ry
+
+SolutionMethod          diagon
+Diag.ParllelOverK       true
+
+ElectronicTemperature    1 meV
+
+%block kgrid.MonkhorstPack
+   9   0   0   0.
+   0   9   0   0.
+   0   0   1   0.
+%endblock kgrid.MonkhorstPack
+
+SCF.DM.Tolerance         1.0E-4
+
+MaxSCFIterations        1000
+
+DM.MixingWeight         0.005
+DM.NumberPulay          8
+DM.UseSaveDM            T
+DM.NumberKick           25
+DM.MixSCF1  F
+
+WriteMullikenPop       1
+WriteHirshfeldPop      t
+WriteVoronoiPop        t
+
+WriteForces            T
+WriteCoorStep          T
+
+TS.HS.Save true
+
+SaveRho t
+SaveTotalPotential t

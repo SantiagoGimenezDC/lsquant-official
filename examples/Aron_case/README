@@ -1,0 +1,34 @@
+Run the commands:
+
+<lsquant-path>/lsquant-official/build/inline_compute-kpm-MeanSquareDisplacement_Graphene_NNN_2 100 500 10 100 0
+
+<lsquant-path>/lsquant-official/build/device-postProcess_Graphene_NNN
+
+
+
+
+OVERVIEW:
+This will run the Aron case for the specific random puddle distribution initialized with seed 3.
+
+
+BREAKDOWN OF THE COMMANDS:
+<lsquant-path>/lsquant-official/build/inline_compute-kpm-MeanSquareDisplacement_Graphene_NNN_2 <D> <N_MOM> <N_TSTEPS> <T_MAX>
+
+
+   D: Number of graphene unit cells in each direction of the superlattice
+      ( the superlattice will be DxD)
+   N_MOM: Number of Chebyshev polynomials in the DOS expansion
+   N_TSTEPS: Number of time steps of the time evolution
+   T_MAX: maximum time of the time evolution
+
+
+
+
+
+ARON RESULTS:
+To reproduce Aron results exactly, run the following (computation will take a day or two):
+
+
+<lsquant-path>/lsquant-official/build/inline_compute-kpm-MeanSquareDisplacement_Graphene_NNN_2 1000 7000 50 5000
+
+<lsquant-path>/lsquant-oficial/build/device-postProcess_Graphene_NNN
