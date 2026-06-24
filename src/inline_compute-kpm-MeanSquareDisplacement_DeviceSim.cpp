@@ -82,7 +82,7 @@ int main(int argc, char *argv[])
 	if( argc == 6)
 		gen  = qstates::LoadStateFile(argv[5]);
 
-	chebyshev::MeanSquareDisplacement_DeviceSim(chebMoms, numMoms, tmax/numTimes, tmax, gen);
+	chebyshev::MeanSquareDisplacement_DeviceSim(chebMoms, numMoms, numTimes, tmax/numTimes, gen);
 
 
 

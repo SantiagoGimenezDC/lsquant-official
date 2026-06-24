@@ -6,10 +6,13 @@ Reads a SIESTA .fdf file, builds a k-point grid of size kx × ky × kz,
 performs Löwdin orthogonalisation at each k-point, assembles the full
 supercell (block-diagonal) operators, and writes them as linqt .CSR files:
 
-    <prefix>.HAM.CSR    – Löwdin-orthogonalised Hamiltonian  H_ortho
-    <prefix>.VX.CSR     – velocity operator V_x
-    <prefix>.VY.CSR     – velocity operator V_y
+    <prefix>.HAM.CSR    – Löwdin-orthogonalised Hamiltonian  H_ortho  (k-space, block-diagonal)
+    <prefix>.VX.CSR     – velocity operator V_x  (k-space, from dHk/dk, for Kubo-Bastin)
+    <prefix>.VY.CSR     – velocity operator V_y  (k-space)
     <prefix>.BLOCH.CSR  – Bloch transform matrix B (atom gauge)
+    <prefix>.HREAL.CSR  – real-space Hamiltonian  H_real = B† H_blk B  (for MSD)
+    <prefix>.VXREAL.CSR – real-space velocity  [H_real, X]             (for MSD)
+    <prefix>.VYREAL.CSR – real-space velocity  [H_real, Y]             (for MSD)
 
 Löwdin velocity formula (from the non-orthogonal Kubo–Bastin literature):
 
@@ -62,6 +65,10 @@ import numpy as np
 import scipy.linalg as sla
 from scipy.sparse import csr_matrix, coo_matrix, block_diag
 
+
+# ─────────────────────────────────────────────────────────────────────────────
+# CSR writer  (linqt format)
+# ─────────────────────────────────────────────────────────────────────────────
 def prune_and_sort(mat, tol=1e-6):
     """
     Remove entries with |value| < tol and sort column indices within each row
@@ -82,10 +89,7 @@ def prune_and_sort(mat, tol=1e-6):
     return mat
     
     
-# ─────────────────────────────────────────────────────────────────────────────
-# CSR writer  (linqt format)
-# ─────────────────────────────────────────────────────────────────────────────
-
+    
 def write_linqt_csr(mat, path: str):
     """
     Write a scipy sparse matrix to a linqt .CSR text file.
@@ -309,25 +313,22 @@ def build_bloch_transform(H_source, Ks: np.ndarray,
     ik_idx = np.arange(Nk, dtype=np.int64)
     iR_idx = np.arange(Nk, dtype=np.int64)
 
-
     for alpha in range(W):
         phase_atom  = k_carts @ tau_orb[alpha]
         phase_total = phase_lat + phase_atom[:, np.newaxis]
         B_alpha     = inv_sqrt_Nk * np.exp(1j * phase_total)   # (Nk, Nk)
 
-        # Explicit (Nk, Nk) index arrays via meshgrid
-        rows_2d, cols_2d = np.meshgrid(
-            ik_idx * W + alpha,   # row indices: ik*W + alpha
-            iR_idx * W + alpha,   # col indices: iR*W + alpha
-            indexing='ij'         # rows_2d[ik, iR], cols_2d[ik, iR]
-        )
+        rows_flat = np.repeat(ik_idx * W + alpha, Nk)   # (Nk*Nk,)
+        cols_flat = np.tile  (iR_idx * W + alpha, Nk)   # (Nk*Nk,)
 
         sl = slice(alpha * Nk * Nk, (alpha + 1) * Nk * Nk)
-        row_arr [sl] = rows_2d.ravel()
-        col_arr [sl] = cols_2d.ravel()
+        row_arr [sl] = rows_flat
+        col_arr [sl] = cols_flat
         data_arr[sl] = B_alpha.ravel()
         
-
+        
+        
+        
     B = coo_matrix((data_arr, (row_arr, col_arr)), shape=(N, N)).tocsr()
 
     # Sanity check: B should be unitary  →  max|B†B - I| should be ~1e-12
@@ -335,6 +336,126 @@ def build_bloch_transform(H_source, Ks: np.ndarray,
     print(f"  Unitarity check  max|B†B - I| = {err:.2e}")
 
     return B
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Supercell position operator and real-space velocity  [H_real, X]
+# ─────────────────────────────────────────────────────────────────────────────
+
+def build_supercell_positions(H_source, Ks: np.ndarray,
+                              kx: int, ky: int, kz: int):
+    """
+    Build diagonal position operators X and Y for the full Löwdin real-space
+    supercell.  The diagonal entry for site (iR, α) is the full Cartesian
+    coordinate of atom α inside unit cell iR:
+
+        x(iR, α) = R_iR[0] + τ_α[0]       (runs 0 → L_x across the supercell)
+        y(iR, α) = R_iR[1] + τ_α[1]
+
+    This is the macroscopic position — not the periodic unit-cell position —
+    which is required for a correctly growing MSD.
+
+    Parameters
+    ----------
+    H_source : sisl.Hamiltonian
+    Ks       : (Nk, 3) fractional k-coordinates (same ordering as build_operators)
+    kx,ky,kz : k-grid dimensions
+
+    Returns
+    -------
+    x_coords, y_coords : (Nk*W,) float arrays of supercell coordinates (Å)
+    X_op, Y_op         : diagonal CSR sparse matrices of shape (Nk*W, Nk*W)
+    """
+    from scipy.sparse import diags as sp_diags
+
+    cell     = H_source.geometry.cell   # (3,3) real lattice, rows (Å)
+    W        = H_source.no
+    Nk       = len(Ks)
+    N        = Nk * W
+
+    # Map each orbital to the position of its host atom
+    xyz      = H_source.geometry.xyz    # (natoms, 3) in Å
+    tau_orb  = np.zeros((W, 3))
+    for ia in range(H_source.na):
+        orbs = H_source.geometry.a2o(ia, all=True)
+        tau_orb[orbs] = xyz[ia]
+
+    # Real-space unit cell positions R for each k-grid point
+    n_grid  = np.round(Ks * np.array([kx, ky, kz])).astype(int)  # (Nk, 3)
+    R_vecs  = n_grid @ cell                                         # (Nk, 3) Å
+
+    # Full supercell coordinates: x(iR,α) = R_iR[0] + τ_α[0]
+    iR_idx  = np.repeat(np.arange(Nk), W)   # [0,0,...,1,1,...,Nk-1,...]
+    al_idx  = np.tile  (np.arange(W),  Nk)  # [0,1,...,W-1,0,1,...,W-1,...]
+
+    x_coords = R_vecs[iR_idx, 0] + tau_orb[al_idx, 0]   # (N,)
+    y_coords = R_vecs[iR_idx, 1] + tau_orb[al_idx, 1]   # (N,)
+
+    X_op = sp_diags(x_coords, format='csr')
+    Y_op = sp_diags(y_coords, format='csr')
+
+    print(f"  Supercell x range: [{x_coords.min():.2f}, {x_coords.max():.2f}] Å")
+    print(f"  Supercell y range: [{y_coords.min():.2f}, {y_coords.max():.2f}] Å")
+
+
+    return x_coords, y_coords, X_op, Y_op
+
+
+def build_real_space_velocity(H_real, x_coords: np.ndarray,
+                              y_coords: np.ndarray, tol: float = 1e-6):
+    """
+    Compute real-space velocity operators as commutators with the macroscopic
+    position:
+
+        VX_real = [H_real, X_real]
+        VY_real = [H_real, Y_real]
+
+    For a diagonal position operator X, the commutator is element-wise:
+
+        [H, X]_{ij} = H_{ij} * (x_j - x_i)
+
+    so VX_real has exactly the same sparsity pattern as H_real — only the
+    values change.  This is mathematically equivalent to B† (dH/dk_x) B in
+    the atom gauge, but expressed in the real-space basis where x_j - x_i
+    includes the full inter-unit-cell displacement R_j - R_i, not just the
+    intra-cell part.  This is what enables the MSD to grow without bound.
+
+    Parameters
+    ----------
+    H_real    : (N, N) sparse CSR — real-space Löwdin Hamiltonian
+    x_coords  : (N,) supercell x-coordinates from build_supercell_positions
+    y_coords  : (N,) supercell y-coordinates
+    tol       : pruning threshold
+
+    Returns
+    -------
+    VX_real, VY_real : sparse CSR matrices, same sparsity as H_real
+    """
+    from scipy.sparse import coo_matrix
+
+    """
+    H_coo = H_real.tocoo()
+    N     = H_real.shape[0]
+
+    # Bond vectors for each nonzero element H_{ij}
+    dx = x_coords[H_coo.col] - x_coords[H_coo.row]   # x_j - x_i
+    dy = y_coords[H_coo.col] - y_coords[H_coo.row]
+
+    VX = coo_matrix((H_coo.data * dx, (H_coo.row, H_coo.col)),
+                    shape=(N, N)).tocsr()
+    VY = coo_matrix((H_coo.data * dy, (H_coo.row, H_coo.col)),
+                    shape=(N, N)).tocsr()
+
+    VX = prune_and_sort(VX, tol)
+    VY = prune_and_sort(VY, tol)
+    """
+    x_op = x_coords.diag()
+    y_op = y_coords.diag()
+    
+    VX = H_real @ x_op - x_op @ H_real
+    VY = H_real @ y_op - y_op @ H_real
+    
+    return VX, VY
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -354,9 +475,6 @@ def main():
     parser.add_argument("--prefix", default=None,
                         help="Output file prefix (default: fdf stem)")
     parser.add_argument("--gauge", default="r",
-                        help="sisl gauge string (default: 'r')")
-                        
-    parser.add_argument("--Bloch", default=False,
                         help="sisl gauge string (default: 'r')")
     args = parser.parse_args()
 
@@ -385,31 +503,38 @@ def main():
     )
 
     # ── Build Bloch transform matrix ──────────────────────────────────────────
-    if(bool(args.Bloch) == True):
-    	print("\nBuilding Bloch transform matrix (atom gauge) ...")
-    	B = build_bloch_transform(H_src, Ks, args.kx, args.ky, args.kz)
+    print("\nBuilding Bloch transform matrix (atom gauge) ...")
+    B = build_bloch_transform(H_src, Ks, args.kx, args.ky, args.kz)
+
+    # ── Real-space Hamiltonian  H_real = B† H_blk B ───────────────────────────
+    # This is the sparse Löwdin-orthogonalised Hamiltonian in the Wannier-like
+    # real-space basis.  Its sparsity mirrors the original SIESTA hopping range.
+    print("\nBuilding real-space Hamiltonian H_real = B† H_blk B ...")
+    H_real = prune_and_sort(B.conj().T @ H_blk @ B)
+    print(f"  H_real nnz = {H_real.nnz}")
+
+    # ── Supercell position operators ──────────────────────────────────────────
+    print("\nBuilding supercell position operators (full macroscopic coordinates) ...")
+    x_coords, y_coords, X_op, Y_op = build_supercell_positions(
+        H_src, Ks, args.kx, args.ky, args.kz)
+
+    # ── Real-space velocity  [H_real, X]  ─────────────────────────────────────
+    # [H, X]_{ij} = H_{ij} * (x_j - x_i)  — same sparsity as H_real.
+    # The bond vector x_j - x_i includes the full inter-unit-cell displacement,
+    # so MSD grows correctly without finite-size recurrence.
+    print("\nBuilding real-space velocity operators [H_real, X] and [H_real, Y] ...")
+    VX_real, VY_real = build_real_space_velocity(H_real, x_coords, y_coords)
 
     # ── Write outputs ─────────────────────────────────────────────────────────
     print("\nWriting CSR files ...")
-    write_linqt_csr(H_blk,  f"{prefix}.HAM.CSR")
-    write_linqt_csr(Vx_blk, f"{prefix}.VX.CSR")
-    write_linqt_csr(Vy_blk, f"{prefix}.VY.CSR")
-    
-    if(bool(args.Bloch) == True):    
-    	write_linqt_csr(B,      f"{prefix}.BLOCH.CSR")
+    write_linqt_csr(H_blk,   f"{prefix}.HAM.CSR")
+    write_linqt_csr(Vx_blk,  f"{prefix}.VX.CSR")
+    write_linqt_csr(Vy_blk,  f"{prefix}.VY.CSR")
+    write_linqt_csr(B,       f"{prefix}.BLOCH.CSR")
+    write_linqt_csr(H_real,  f"{prefix}.HREAL.CSR")
+    write_linqt_csr(VX_real, f"{prefix}.VXREAL.CSR")
+    write_linqt_csr(VY_real, f"{prefix}.VYREAL.CSR")
 
-    	# ── Write test outputs ─────────────────────────────────────────────────────────
-    	Hr_blk  = prune_and_sort(B.conj().T @ H_blk  @ B)
-    	Vxr_blk = prune_and_sort(B.conj().T @ Vx_blk @ B)
-    	Vyr_blk = prune_and_sort(B.conj().T @ Vy_blk @ B)
-        
-    	print("\nWriting CSR files ...")
-    	write_linqt_csr(Hr_blk,  f"{prefix}_r.HAM.CSR")
-    	write_linqt_csr(Vxr_blk, f"{prefix}_r.VX.CSR")
-    	write_linqt_csr(Vyr_blk, f"{prefix}_r.VY.CSR")
-     
-    
-    
     print("\nAll done.")
 
 

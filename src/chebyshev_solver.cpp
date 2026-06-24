@@ -152,7 +152,7 @@ int chebyshev::MeanSquareDisplacement_DeviceSim(chebyshev::MomentsTD & H, int nM
 
 		
     // ── 6. Time-evolution loop ────────────────────────────────────────────────
-    for (int it = 1; it < nT; ++it) {
+    for (int it = 1; it <= nT; ++it) {
       std::cout << "\n\nTime step = " << it << "  :  " << it*tstep << " fs \n";
 
         // Evolve psi, xupsi, yupsi by one step T:
