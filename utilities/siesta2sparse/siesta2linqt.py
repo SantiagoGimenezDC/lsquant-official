@@ -375,8 +375,19 @@ def main():
     except Exception as e:
         sys.exit(f"Error reading SIESTA file: {e}")
 
+    geom = H_src.geometry
+
+    # Number of atoms
+    na = geom.na
+
+    # Lattice vectors (3x3 array)
+    cell = geom.lattice.cell
+    
+
     print(f"  orbitals per cell (W): {H_src.no}")
     print(f"  spin class: {H_src.spin}")
+    
+    print("   The area per atom is: ", (cell[0,0]*cell[1,1] - cell[0,1]*cell[1,0])/na )
 
     # ── Build Löwdin operators ────────────────────────────────────────────────
     print(f"\nBuilding Löwdin operators on {args.kx}×{args.ky}×{args.kz} grid ...")
@@ -384,10 +395,8 @@ def main():
         H_src, args.kx, args.ky, args.kz, gauge=args.gauge
     )
 
-    # ── Build Bloch transform matrix ──────────────────────────────────────────
-    if(bool(args.Bloch) == True):
-    	print("\nBuilding Bloch transform matrix (atom gauge) ...")
-    	B = build_bloch_transform(H_src, Ks, args.kx, args.ky, args.kz)
+
+
 
     # ── Write outputs ─────────────────────────────────────────────────────────
     print("\nWriting CSR files ...")
@@ -396,6 +405,10 @@ def main():
     write_linqt_csr(Vy_blk, f"{prefix}.VY.CSR")
     
     if(bool(args.Bloch) == True):    
+    	# ── Build Bloch transform matrix ──────────────────────────────────────────
+    	print("\nBuilding Bloch transform matrix (atom gauge) ...")
+    	B = build_bloch_transform(H_src, Ks, args.kx, args.ky, args.kz)
+
     	write_linqt_csr(B,      f"{prefix}.BLOCH.CSR")
 
     	# ── Write test outputs ─────────────────────────────────────────────────────────
@@ -407,6 +420,8 @@ def main():
     	write_linqt_csr(Hr_blk,  f"{prefix}_r.HAM.CSR")
     	write_linqt_csr(Vxr_blk, f"{prefix}_r.VX.CSR")
     	write_linqt_csr(Vyr_blk, f"{prefix}_r.VY.CSR")
+     
+     
      
     
     

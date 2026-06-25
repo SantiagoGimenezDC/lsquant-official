@@ -86,52 +86,33 @@ hbar = hbar/q
 G0 = 2*q**2/h
 
 
-# Read in sample file and get desired parameters
-fsamp = open('unitcell.txt','r')
-
-line = fsamp.readline()
-A1x = list(map(float, line.split()))[0]   # [Angstrom]
-A1y = list(map(float, line.split()))[1]   # [Angstrom]
-L1 = np.sqrt(A1x**2 + A1y**2)
-
-line = fsamp.readline()
-A2x = list(map(float, line.split()))[0]   # [Angstrom]
-A2y = list(map(float, line.split()))[1]   # [Angstrom]
-L2 = np.sqrt(A2x**2 + A2y**2)
-
-line = fsamp.readline()
-acc = float(line)                        # [Angstrom]
-
-line = fsamp.readline()
-line = fsamp.readline()
-natoms = int(line)
-fsamp.close()
 
 
 # Read in params.txt into namelist object
 #  and get desired parameters
 nml   = f90nml.read('params.txt')
 tstep = nml['params']['tstep']         # Time step [fs]
-nT    = nml['params']['nT']            # Number of time steps
+nT    = nml['params']['numTimes']            # Number of time steps
 time  = np.linspace(0,nT*tstep,nT+1)   # Time vector
 
-t     = nml['params']['teV']           # Hopping [eV]
+t     = 2.7 # nml['params']['teV']           # Hopping [eV]
 #t     = t * 13.78*np.exp(-1.85*acc)    # Account for Simon model
-vf    = 3/2 * (acc*1e-10)*t/hbar       # Graphene Fermi velocity
+vf    = 3/2 * (1.42*1e-10)*t/hbar       # Graphene Fermi velocity
 
 Emin  = nml['params']['Emin']          # Minimum energy to examine [eV]
 Emax  = nml['params']['Emax']          # Maximum energy [eV]
 dE    = nml['params']['dE']            # Energy step [eV]
 nE = int((Emax-Emin)/dE) + 1
 
-nrow = nml['params']['nrow']
-ncol = nml['params']['ncol']
-Lmax = min(ncol*L1,nrow*L2)   # Sample dimension [Angstrom]
+#nrow = nml['params']['nrow']
+#ncol = nml['params']['ncol']
+#Lmax = min(ncol*L1,nrow*L2)   # Sample dimension [Angstrom]
 
 
 # Area per atom [1/m^2]
-A = (A1x*A2y - A1y*A2x) * 1e-20 / natoms
+A = 2.6193804283587947 * 1e-20 #Unit cell area per atom of graphene
 
+print("The unit cell area per atom is:  ", A /1e-20 )
 
 
 # Get DOS, convert to [1/J/m^2]
@@ -139,30 +120,25 @@ data = np.loadtxt('dos.txt')
 E   = data[:,0]
 dos = data[:,1]
 dos = 2*dos/A / q   # The 2 is for spin
+dosfine = dos
 
-
-# Get fine-energy-grid DOS [1/J/m^2]
-data = np.loadtxt('dos.txt')
-Efine   = data[:,0]
-dosfine = data[:,1]
-dosfine = 2*dosfine/A / q   # The 2 is for spin
 
 # Get index of charge neutrality point
 # (chosen here to be the minimum of the DOS)
 iCNP = np.argmin(dosfine)
 
 # Get carrier density from full spectrum DOS
-n2Dfine = cumtrapz(dosfine*A*q,Efine, initial=0)
+n2Dfine = cumtrapz(dos*A*q,E, initial=0)
 n2Dfine = n2Dfine - n2Dfine[iCNP]
 n2Dfine = n2Dfine / A
 print()
 print('iCNP:          ',iCNP)
-print('Efine[iCNP]:   ',Efine[iCNP])
+print('Efine[iCNP]:   ',E[iCNP])
 print('n2Dfine[iCNP]: ',n2Dfine[iCNP])
 print()
 
 # Interpolate carrier density onto zoomed energy grid
-n2D = np.interp(E, Efine,n2Dfine)
+n2D = np.interp(E, E,n2Dfine)
 
 
 
@@ -282,7 +258,7 @@ colors = plt.cm.coolwarm(np.linspace(0,1,nE))
 ax.set_prop_cycle('color', colors)
 
 # Horizontal line at MSD = Lmax^2
-ax.axhline((Lmax/1e4)**2,0,1)
+#ax.axhline((Lmax/1e4)**2,0,1)
 
 # Plot sigma(t) at each energy
 for iE in range(nE):

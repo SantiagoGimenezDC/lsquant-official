@@ -4,7 +4,7 @@ cd operators
 python3 <lsquant-path>/lsquant-official/utilities/siesta2sparse/siesta2linqt.py graphene_SZ/RUN.fdf 100 100 --prefix graphene
 cd ..
 
-<lsquant-path>/lsquant-official/build/inline_compute-kpm-MeanSquareDisplacement_DeviceSim graphene 300 10 100 
+<lsquant-path>/lsquant-official/build/inline_compute-kpm-MeanSquareDisplacement_DeviceSim graphene 800 10 100 
 <lsquant-path>/lsquant-official/build/device-postProcess
 
 

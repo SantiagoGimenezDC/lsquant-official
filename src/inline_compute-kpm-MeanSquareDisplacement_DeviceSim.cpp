@@ -119,6 +119,29 @@ int main(int argc, char *argv[])
 
 
 
+	std::ofstream pp2("params.txt");
+	if (!pp2) throw std::runtime_error("Cannot open params.txt");
+
+	pp2 <<"$params"<<"\n \n"
+           << "a        =  " << a         << "\n"
+	   << "b        =  " << b         << "\n"
+	   << "nMom_DOS =  " << numMoms  << "\n"
+	   << "size     = " << 1.0      << "\n"
+	  
+	   << "numTimes = " << numTimes  << "\n"
+	   << "tmax     = " << tmax      << "\n"
+	   << "tstep    = " << tstep     << "\n"
+
+	  //These may be altered afterwards
+	   << "Emin     = " << Emin      << "\n"
+	   << "Emax     = " << Emax      << "\n"
+	   << "dE       = " << dE        << "\n"
+	   << "eta      = " << eta       << "\n\n"
+	   <<"$end"<<"\n";
+
+	pp2.close();
+	
+
 
 	std::cout<<"End of program"<<std::endl;
 	return 0;
