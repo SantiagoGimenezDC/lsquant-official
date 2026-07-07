@@ -64,13 +64,13 @@ void Kubo_solver_FFT::compute( SparseMatrixType &OPL, SparseMatrixType &OPR,  qs
 
   
 
-  while( r < 1)  { //gen.getQuantumState()    
+  while( r < R_)  { //gen.getQuantumState()    
     time_station randVec_time;
     std::cout<<"Computing with ID: "<<gen.count<<" states" <<std::endl;
 
     
     gen.SystemSize(DIM);
-    gen.getQuantumState();    
+    gen.getQuantumState(r);    
     //SELECT RUNNING TYPE
     polynomial_recursion(gen.State(),gen.State(), OPL, OPR, chebVecL_,chebVecR_, r_data);
 

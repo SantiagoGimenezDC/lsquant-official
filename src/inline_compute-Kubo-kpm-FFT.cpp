@@ -23,7 +23,7 @@ void printWelcomeMessage();
 }
 int main(int argc, char *argv[])
 {
-	if ( !(argc == 5 || argc == 6) )
+	if ( !(argc == 6 || argc == 7) )
 	{
 		kpmKubo::printHelpMessage();
 		return 0;
@@ -35,10 +35,13 @@ int main(int argc, char *argv[])
 		LABEL = argv[1],
 		S_OPR = argv[2],
 		S_OPL = argv[3],
-		S_NUM_MOM = argv[4];
+	  S_NUM_MOM = argv[4],
+	  S_NUM_R= argv[5];
 
 	
 	const int numMoms= atoi(argv[4]);
+	int R = atoi(argv[5]);
+	
         int num_sections = 1, nump = 20*numMoms;
 	chebyshev::formula sym_formula = chebyshev::KUBO_BASTIN;
 	//chebyshev::Moments Hamiltonian_dummyMoms; //load number of moments
@@ -75,18 +78,25 @@ int main(int argc, char *argv[])
 
 	chebVec_2 = chebVec;
 
+	std::cout << "/*----------------------------------------------------------------------------*/" ;
+	std::cout << std::endl;
+	std::cout << "          THIS SOLVER IS TWEAKED FOR THE BISMUTHENE CASE ONLY!!!!!!        " << std::endl << std::endl;
+	std::cout << "/*----------------------------------------------------------------------------*/" ;
+	std::cout << std::endl;
 
+
+	
 	//Define thes states youll use
 	//Factory state_factory ;
 
 	//Compute the chebyshev expansion table
 	qstates::generator gen;
-	if( argc == 6)	
-		gen  = qstates::LoadStateFile(argv[5]);
+	if( argc == 7)	
+		gen  = qstates::LoadStateFile(argv[6]);
 
 	std::string outputfilename="Greenwood_FFT"+S_OPR+"-"+S_OPL+LABEL+"KPM_M"+S_NUM_MOM+"x"+S_NUM_MOM+"_state"+gen.StateLabel()+".conductivity";
 
-	chebyshev::Kubo_solver_FFT solver(numMoms,  num_sections, nump, sym_formula, chebVec, chebVec_2,  outputfilename);
+	chebyshev::Kubo_solver_FFT solver(R, numMoms,  num_sections, nump, sym_formula, chebVec, chebVec_2,  outputfilename);
 	solver.compute( OP[1], OP[2], gen );
 
 	//Save the table in a file

@@ -116,7 +116,7 @@ int main(int argc, char *argv[])
 
 	std::string outputfilename="Greenwood_FFT"+S_OPR+"-"+S_OPL+LABEL+"KPM_M"+S_NUM_MOM+"x"+S_NUM_MOM+"_state"+gen.StateLabel()+".conductivity_nonOrth";
 
-	chebyshev::Kubo_solver_FFT solver(numMoms,  num_sections, nump, sym_formula, chebVec,chebVec_2,  outputfilename);
+	chebyshev::Kubo_solver_FFT solver(1,numMoms,  num_sections, nump, sym_formula, chebVec,chebVec_2,  outputfilename);
 	solver.compute( OP[0], OP[0], gen );
 
 	
