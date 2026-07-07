@@ -80,6 +80,11 @@ class Moments
 		return *_pNHAM; 
 	};
 
+	inline
+	SparseMatrixType* Ham()
+	{ 
+		return _pNHAM; 
+	};
 
 
 	//SETTERS
@@ -90,6 +95,15 @@ class Moments
 			this->SystemSize( NHAM.rank() );	
 		assert( NHAM.rank() == this->SystemSize()  );
 		_pNHAM = &NHAM; 
+	};
+
+	inline
+	void SetHamiltonian( SparseMatrixType* NHAM )
+	{ 
+		if ( this->SystemSize() == 0 ) //Use the rank of the hamiltonian as system size
+			this->SystemSize( NHAM->rank() );	
+		assert( NHAM->rank() == this->SystemSize()  );
+		_pNHAM = NHAM; 
 	};
 
 
@@ -109,6 +123,13 @@ class Moments
 	};
 
 
+	inline
+	void SetAndRescaleHamiltonian(SparseMatrixType* NHAM)
+	{ 
+		this->SetHamiltonian(NHAM );
+		this->Rescale2ChebyshevDomain();
+	};
+  
 	inline
 	void SystemSize(const int dim)  { system_size = dim; };
 
@@ -928,6 +949,214 @@ class Vectors : public Moments
 	vectorList_t Chebmu;	
 	int numVecs;
 };
+
+
+
+
+
+
+
+
+
+
+
+class Moments_kQuant
+{
+	public:
+	typedef std::complex<double>  value_t;
+	typedef std::vector< value_t > vector_t;
+
+	//default constructor
+	Moments_kQuant():
+	_pNHAM(0),system_label(""),system_size(0),
+	band_width(0),band_center(0){};
+
+	//GETTERS
+	void getMomentsParams( Moments_kQuant& mom)
+	{
+		this->SetHamiltonian( mom.Hamiltonian() ) ; 
+		this->SystemLabel( mom.SystemLabel());
+		this->BandWidth( mom.BandWidth() );
+		this->BandCenter( mom.BandCenter() );
+	};	
+	
+	inline
+	size_t SystemSize() const { return system_size; };
+
+	inline
+	string SystemLabel() const { return system_label; };
+
+	inline
+	double BandWidth() const { return band_width; };
+
+	inline
+	double HalfWidth() const { return BandWidth()/2.0; };
+
+	inline
+	double BandCenter() const { return band_center; };
+
+	inline
+	double ScaleFactor() const { return chebyshev::CUTOFF/HalfWidth(); };
+
+	inline
+	double ShiftFactor() const { return -BandCenter()/HalfWidth()*chebyshev::CUTOFF; };
+
+	inline 
+	vector_t& MomentVector() { return mu ;}
+
+	inline
+	value_t& MomentVector(const size_t i){return  mu[i]; };
+
+	inline
+	Moments::vector_t& Chebyshev0(){ return ChebV0; } 
+
+	inline
+	Moments::vector_t& Chebyshev1(){ return ChebV1; } 
+
+	inline
+	SparseMatrixType_kQuant& Hamiltonian()
+	{ 
+		return *_pNHAM; 
+	};
+
+	inline
+	SparseMatrixType_kQuant* Ham()
+	{ 
+		return _pNHAM; 
+	};
+
+
+	//SETTERS
+	inline
+	void SetHamiltonian( SparseMatrixType_kQuant& NHAM )
+	{ 
+		if ( this->SystemSize() == 0 ) //Use the rank of the hamiltonian as system size
+			this->SystemSize( NHAM.rank() );	
+		assert( NHAM.rank() == this->SystemSize()  );
+		_pNHAM = &NHAM; 
+	};
+
+	inline
+	void SetHamiltonian( SparseMatrixType_kQuant* NHAM )
+	{ 
+		if ( this->SystemSize() == 0 ) //Use the rank of the hamiltonian as system size
+			this->SystemSize( NHAM->rank() );	
+		assert( NHAM->rank() == this->SystemSize()  );
+		_pNHAM = NHAM; 
+	};
+
+
+	//Heavy functions
+	int  Rescale2ChebyshevDomain()
+	{
+		this->Hamiltonian().Rescale(this->ScaleFactor(),this->ShiftFactor());
+		return 0;
+	};
+
+
+	inline
+	void SetAndRescaleHamiltonian(SparseMatrixType_kQuant& NHAM)
+	{ 
+		this->SetHamiltonian(NHAM );
+		this->Rescale2ChebyshevDomain();
+	};
+
+
+	inline
+	void SetAndRescaleHamiltonian(SparseMatrixType_kQuant* NHAM)
+	{ 
+		this->SetHamiltonian(NHAM );
+		this->Rescale2ChebyshevDomain();
+	};
+  
+	inline
+	void SystemSize(const int dim)  { system_size = dim; };
+
+	inline
+	void SystemLabel(string label)  { system_label = label; };
+
+	inline
+	void BandWidth( const double x)  { band_width = x; };
+
+	inline
+	void BandCenter(const double x) { band_center = x; };
+
+	inline 
+	void MomentVector(const vector_t _mu ) { mu= _mu;}
+
+	virtual void SetInitVectors( const vector_t& );
+
+	virtual void SetInitVectors( SparseMatrixType_kQuant & ,const vector_t&  );
+
+
+	inline
+	double Rescale2ChebyshevDomain(const double energ)
+	{ 
+		return (energ - this->BandCenter() )/this->HalfWidth(); 
+	};
+
+	int Iterate( );
+
+	//light functions
+    int JacksonKernelMomCutOff( const double broad );
+	
+	//light functions
+    double JacksonKernel(const double m,  const double Mom );
+
+
+	private:
+	SparseMatrixType_kQuant* _pNHAM;
+
+	Moments::vector_t ChebV0,ChebV1,OPV;
+	std::string system_label;
+	size_t system_size;
+	double band_width,band_center;
+	vector_t mu;	
+};
+
+
+
+class Moments1D_kQuant: public Moments_kQuant
+{
+	public: 
+
+	Moments1D_kQuant():_numMoms(0){};
+
+	Moments1D_kQuant(const size_t m0):_numMoms(m0){ this->MomentVector( Moments::vector_t(_numMoms, 0.0) ); };
+
+	Moments1D_kQuant( std::string momfilename );
+
+	//GETTERS
+	inline
+	size_t MomentNumber() const { return _numMoms; };
+
+	inline
+	size_t HighestMomentNumber() const { return  _numMoms; };
+
+	//SETTERS
+	inline
+        void SetMomentNumber(size_t newNumMoms )  { _numMoms = newNumMoms; };
+
+	//OPERATORS
+	inline
+	Moments::value_t& operator()(const size_t m0) { return this->MomentVector(m0); };
+
+	void MomentNumber(const size_t _numMoms );
+
+	void saveIn(std::string filename);
+
+	//Transformation
+	void ApplyJacksonKernel( const double broad );
+  
+	// Input/Output
+	void Print();
+
+	private:
+	size_t _numMoms;
+};
+
+
+
 
 };
 

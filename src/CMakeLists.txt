@@ -20,6 +20,7 @@ set(KPM_LIB_SOURCES
  "Bastin_FFTs.cpp"
  "Device/Device.cpp"
  "Device/Graphene_KaneMele.cpp"
+ "sparse_matrix_kquant.cpp"
  
  
  "chebyshev_solver_Device.cpp"
@@ -194,6 +195,11 @@ target_link_libraries(${MAIN} ${KPM_LIB} )
 
 set(MAIN inline_kpm-DOS-standalone_Graphene_NNN )
 add_executable(${MAIN} inline_kpm-DOS-standalone_Graphene_NNN.cpp )
+target_link_libraries(${MAIN} ${KPM_LIB} )
+
+
+set(MAIN inline_kpm_dos_kQuant )
+add_executable(${MAIN} inline_kpm_dos_kQuant.cpp )
 target_link_libraries(${MAIN} ${KPM_LIB} )
 
 

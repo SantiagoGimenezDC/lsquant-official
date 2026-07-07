@@ -171,7 +171,6 @@ void SparseMatrixType::Multiply(const complex<double> a, const complex<double> *
 
 
 
-
 	eig_y = a * matrix_ * eig_x + b * eig_y; 
 
 

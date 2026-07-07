@@ -66,6 +66,9 @@ namespace chebyshev
 
 	int SpectralMoments(SparseMatrixType &OP,  chebyshev::Moments1D &chebMoms, qstates::generator& gen);
 
+	int SpectralMoments_kQuant(chebyshev::Moments1D_kQuant &chebMoms, qstates::generator& gen);
+
+  
         int SpectralMoments_S_inv(SparseMatrixType &OP,  chebyshev::Moments1D &chebMoms, qstates::generator& gen, std::array<double,2> spectral_bounds);
 
   

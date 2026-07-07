@@ -58,13 +58,12 @@ public:
     
   
   string matrixType() const { return "CSR Matrix from Eigen."; };
-  void Multiply(const value_t a, const value_t *x, const value_t b, value_t *y);
-  void Multiply(const value_t a, const vector_t& x, const value_t b, vector_t& y);
+  virtual void Multiply(const value_t , const value_t *, const value_t , value_t * );
+  virtual void Multiply(const value_t , const vector_t& , const value_t , vector_t& );
   void Rescale(const value_t a,const value_t b);
-  inline 
-  void Multiply(const value_t *x, value_t *y){ Multiply(value_t(1.0,0),x,value_t(0,0),y);};
-  inline 
-  void Multiply(const vector_t& x, vector_t& y){ Multiply(value_t(1.0,0),x,value_t(0,0),y);};
+
+  inline void Multiply(const value_t *x, value_t *y){ Multiply(value_t(1.0,0),x,value_t(0,0),y);};
+  inline void Multiply(const vector_t& x, vector_t& y){ Multiply(value_t(1.0,0),x,value_t(0,0),y);};
 
 
   void BatchMultiply(const int batchSize, const value_t a, const value_t *x, const value_t b, value_t *y);
@@ -115,5 +114,119 @@ public:
   }
   SparseMatrixType *_matrix_type;
 };
+
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SparseMatrixType_kQuant
+//
+// Extends SparseMatrixType with the Bloch phase factors needed to apply
+// the unitary Bloch transform B and its adjoint B† on-the-fly, without
+// storing the full (Nk·W)×(Nk·W) matrix.
+//
+// The Bloch transform factorises as (atom gauge):
+//
+//   B_{(ik,α),(iR,β)} = δ_{αβ} × lat_phase(ik,iR) × atom_phase(ik,α)
+//
+//   lat_phase(ik,iR) = φ_x[n1_ik, m1_iR]          (separable 1D phases)
+//                    × φ_y[n2_ik, m2_iR]
+//                    × φ_z[n3_ik, m3_iR]
+//
+//   φ_d[n,m] = exp(i·2π·n·m / k_d)
+//
+//   atom_phase(ik,α) = exp(i k_ik·τ_α) / √Nk       (already includes 1/√Nk)
+//
+// The overridden Multiply applies the full effective Hamiltonian:
+//
+//   H_eff |ψ⟩ = H_k |ψ⟩  +  B† V_disorder B |ψ⟩
+//
+// where H_k is the k-space sparse block-diagonal Hamiltonian (parent class)
+// and V_disorder is a diagonal Anderson potential in real space.
+// The B / B† transforms are executed via FFTW 3D batch DFTs:
+//
+//   B†:  conj(atom_phase) × ψ_k  → fftw_FORWARD  → ψ_real
+//   B:   fftw_BACKWARD  →  atom_phase × result   → ψ_k
+// ─────────────────────────────────────────────────────────────────────────────
+
+#include <fftw3.h>
+
+class SparseMatrixType_kQuant : public SparseMatrixType
+{
+public:
+    SparseMatrixType_kQuant()
+        : Nk(0), W(0), kx(0), ky(0), kz(0),
+          plan_fwd(nullptr), plan_bwd(nullptr) {}
+
+    ~SparseMatrixType_kQuant()
+    {
+        if (plan_fwd) { fftw_destroy_plan(plan_fwd); plan_fwd = nullptr; }
+        if (plan_bwd) { fftw_destroy_plan(plan_bwd); plan_bwd = nullptr; }
+    }
+
+    // ── Dimensions ────────────────────────────────────────────────────────────
+    int Nk;               // total k-points
+    int W;                // orbitals per unit cell
+    int kx, ky, kz;       // k-grid dimensions
+
+    // ── Phase data ────────────────────────────────────────────────────────────
+    std::vector<std::array<int,3>> n_grid;     // [Nk]  integer grid indices
+    std::vector<value_t>           atom_phases; // [Nk*W] exp(i k·τ_α)/√Nk
+    std::vector<value_t>           phi_x;       // [kx*kx]
+    std::vector<value_t>           phi_y;       // [ky*ky]
+    std::vector<value_t>           phi_z;       // [kz*kz]
+
+    // ── Anderson disorder (diagonal in real space) ─────────────────────────
+    // disorder[iR*W + α] = on-site potential at orbital α in unit cell iR
+    // Real-valued physically, but stored as complex for generality.
+    std::vector<value_t> disorder;
+
+    void SetDisorder(const std::vector<value_t>& dis)
+    {
+        assert((int)dis.size() == Nk * W);
+        disorder = dis;
+    }
+
+    // Fill disorder with uniform random values in [-amplitude/2, +amplitude/2]
+    // per unit cell (same value for all W orbitals in a cell, standard Anderson)
+    void GenerateAndersonDisorder(double amplitude, unsigned int seed = 42);
+
+    // ── I/O ──────────────────────────────────────────────────────────────────
+    bool ReadPhasesFromFile(const std::string& filename);
+
+    // ── FFTW setup ────────────────────────────────────────────────────────────
+    // Must be called after ReadPhasesFromFile, before any Multiply call.
+    // Creates in-place FFTW plans for the (kx×ky×kz) batch DFTs.
+    void PrepareFFT();
+
+    // ── Multiply (overrides parent) ───────────────────────────────────────────
+    // Computes:  y = a * (H_k + B† V B) * x + b * y
+    // If disorder is empty, falls back to H_k only (pure k-space).
+
+    virtual void Multiply(const value_t a, const value_t * vec1, const value_t b, value_t * vec2) { this->Multiply_kQuant(a,  vec1,  b,  vec2); } ;
+    virtual  void Multiply(const value_t a, const vector_t& vec1, const value_t b, vector_t& vec2) { this->Multiply_kQuant(a,  vec1,  b,  vec2); } ;
+
+    void Multiply_kQuant(const value_t , const value_t *, const value_t , value_t * ) ;
+    void Multiply_kQuant(const value_t , const vector_t& , const value_t , vector_t& );
+
+  //  virtual  void Multiply(const value_t , const value_t*,  const value_t ,       value_t*   ) override;
+  //virtual void Multiply(const value_t , const vector_t&  , const value_t ,       vector_t&  ) override;
+
+    // ── Bloch transforms (exposed for external use) ───────────────────────────
+    void apply_B       (value_t* out, const value_t* in) const;
+    void apply_Bdagger (value_t* out, const value_t* in) const;
+
+private:
+    // Working buffer for the disorder application (size Nk*W, FFTW-aligned)
+    std::vector<value_t> fft_buf;
+    fftw_plan            plan_fwd;   // B†: k→real  (FFTW_FORWARD)
+    fftw_plan            plan_bwd;   // B:  real→k  (FFTW_BACKWARD)
+
+    inline value_t lattice_phase(int ik, int iR) const
+    {
+        return phi_x[ n_grid[ik][0]*kx + n_grid[iR][0] ]
+             * phi_y[ n_grid[ik][1]*ky + n_grid[iR][1] ]
+             * phi_z[ n_grid[ik][2]*kz + n_grid[iR][2] ];
+    }
+};
+
 
 #endif

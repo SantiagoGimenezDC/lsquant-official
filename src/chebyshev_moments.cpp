@@ -21,6 +21,27 @@ void chebyshev::Moments::SetInitVectors( SparseMatrixType &OP ,const Moments::ve
 	return ;
 };
 
+void chebyshev::Moments_kQuant::SetInitVectors( SparseMatrixType_kQuant &OP ,const Moments_kQuant::vector_t& T0 )
+{
+	const auto dim = this->SystemSize();
+	assert( OP.rank() == this->SystemSize() && T0.size() == this->SystemSize() );
+
+	if( this->Chebyshev0().size()!= dim )
+		this->Chebyshev0() = Moments_kQuant::vector_t(dim,Moments_kQuant::value_t(0)); 
+
+	if( this->Chebyshev1().size()!= dim )
+		this->Chebyshev1() = Moments_kQuant::vector_t(dim,Moments_kQuant::value_t(0)); 
+	//From now on this-> will be discarded in Chebyshev0() and Chebyshev1()
+
+	linalg::copy ( T0, this->Chebyshev1() );
+	OP.Multiply( 1.0, this->Chebyshev1(), 0.0, this->Chebyshev0() );
+	this->Hamiltonian().Multiply_kQuant( 1.0, this->Chebyshev0(), 0.0, this->Chebyshev1() );
+
+	return ;
+};
+
+
+
 
 void chebyshev::Moments::SetInitVectors( const Moments::vector_t& T0 )
 {
@@ -38,6 +59,22 @@ void chebyshev::Moments::SetInitVectors( const Moments::vector_t& T0 )
 	this->Hamiltonian().Multiply( 1.0, this->Chebyshev0(), 0.0, this->Chebyshev1() );
 };
 
+void chebyshev::Moments_kQuant::SetInitVectors( const Moments_kQuant::vector_t& T0 )
+{
+	assert( T0.size() == this->SystemSize() );
+	const auto dim = this->SystemSize();
+
+	if( this->Chebyshev0().size()!= dim )
+		this->Chebyshev0() = Moments_kQuant::vector_t(dim,Moments_kQuant::value_t(0)); 
+
+	if( this->Chebyshev1().size()!= dim )
+		this->Chebyshev1() = Moments_kQuant::vector_t(dim,Moments_kQuant::value_t(0)); 
+	//From now on this-> will be discarded in Chebyshev0() and Chebyshev1()
+
+	linalg::copy ( T0, this->Chebyshev0() );
+	this->Hamiltonian().Multiply_kQuant( 1.0, this->Chebyshev0(), 0.0, this->Chebyshev1() );
+
+};
 
 
 
@@ -49,7 +86,15 @@ int chebyshev::Moments::JacksonKernelMomCutOff( const double broad )
 	const double eta   =  2.0*broad/1000/this->BandWidth();
 	return ceil(M_PI/eta);
 };
-	
+	//light functions
+int chebyshev::Moments_kQuant::JacksonKernelMomCutOff( const double broad )
+{
+	assert( broad >0 );
+	const double eta   =  2.0*broad/1000/this->BandWidth();
+	return ceil(M_PI/eta);
+};
+
+
 //light functions
 double chebyshev::Moments::JacksonKernel(const double m,  const double Mom )
 {
@@ -57,6 +102,15 @@ double chebyshev::Moments::JacksonKernel(const double m,  const double Mom )
 	phi_J = M_PI/(double)(Mom+1.0);
 	return ( (Mom-m+1)*cos( phi_J*m )+ sin(phi_J*m)/tan(phi_J) )*phi_J/M_PI;
 };
+
+//light functions
+double chebyshev::Moments_kQuant::JacksonKernel(const double m,  const double Mom )
+{
+	const double
+	phi_J = M_PI/(double)(Mom+1.0);
+	return ( (Mom-m+1)*cos( phi_J*m )+ sin(phi_J*m)/tan(phi_J) )*phi_J/M_PI;
+};
+
 
 void chebyshev::Moments1D_nonOrth::SetInitVectors_nonOrthogonal( Moments::vector_t& T0 )
 {
@@ -233,7 +287,15 @@ int chebyshev::Moments1D_nonOrth::Iterate_nonOrthogonal( )
 
 int chebyshev::Moments::Iterate( )
 {
-	this->Hamiltonian().Multiply(2.0,this->Chebyshev1(),-1.0,this->Chebyshev0());
+	this->Ham()->Multiply(2.0,this->Chebyshev1(),-1.0,this->Chebyshev0());
+	this->Chebyshev0().swap(this->Chebyshev1());
+	return 0;
+};
+
+
+int chebyshev::Moments_kQuant::Iterate( )
+{
+	this->Ham()->Multiply_kQuant(2.0,this->Chebyshev1(),-1.0,this->Chebyshev0());
 	this->Chebyshev0().swap(this->Chebyshev1());
 	return 0;
 };
