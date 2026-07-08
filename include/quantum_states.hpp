@@ -34,7 +34,7 @@ namespace qstates
 	{
 		public:
 
-	  generator():count(0),dim(0),label("default"), num_states(1),kind(RANDOM_STATE){ srand(time(0));}
+	  generator():count(0),dim(0),label("default"), num_states(100000000),kind(RANDOM_STATE){ srand(time(0));}
 
 		int SystemSize() const
 		{
@@ -103,6 +103,7 @@ namespace qstates
 						
 						
 					case RANDOM_STATE:
+					  
 					  //std::srand(47);
 					  //std::cout<<"HACKED for testing: random state set to atom in the middle. "<<count<<std::endl;
 						const double norm = sqrt(out.size());

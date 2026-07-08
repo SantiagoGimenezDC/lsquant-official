@@ -1,6 +1,9 @@
 #include "Kubo_solver_FFT.hpp"
 #include "time_station.hpp"
 
+#include <sys/stat.h>
+
+
 
 
 namespace chebyshev 
@@ -54,8 +57,8 @@ void Kubo_solver_FFT::compute( SparseMatrixType &OPL, SparseMatrixType &OPR,  qs
 
 
 
-
-
+  //std::filesystem::create_directories("vecs");
+  mkdir("vecs", 0755);
   
   
 
@@ -81,9 +84,10 @@ void Kubo_solver_FFT::compute( SparseMatrixType &OPL, SparseMatrixType &OPR,  qs
 
      
      time_station time_postProcess;
-     
-     update_data(final_data, r_data, gen.count);
-     postProcess(final_data, r_data, gen.count);
+
+
+     update_data(final_data, r_data, r+1);
+     postProcess(final_data, r_data, r+1);
 
 
      /*
