@@ -138,7 +138,7 @@ void Kubo_solver_FFT_postProcess::Bastin_postProcess(const value_t final_data[],
   r_value_t omega = DIM/( a * a  );//* sysSubLength * sysSubLength );//Dimensional and normalizing constant
 
 
-  r_value_t prefactor = 2.0 / ( a * a * 6.776230343080986e-06 ); //omega/M_PI;
+  r_value_t prefactor = 2.0 / ( M_PI * a * a * 6.776230343080986e-06 ); //omega/M_PI;
   //r_value_t tmp, max=0, av=0;
 
   r_value_t
