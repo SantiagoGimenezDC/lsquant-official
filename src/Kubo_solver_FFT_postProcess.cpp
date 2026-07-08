@@ -136,7 +136,9 @@ void Kubo_solver_FFT_postProcess::Bastin_postProcess(const value_t final_data[],
     //    sysSubLength = device_.sysSubLength();
   
   r_value_t omega = DIM/( a * a );//* sysSubLength * sysSubLength );//Dimensional and normalizing constant
-  
+
+
+  r_value_t prefactor = 2.0 / ( a * a * 6.776230343080986e-06 ); //omega/M_PI;
   //r_value_t tmp, max=0, av=0;
 
   r_value_t
@@ -191,11 +193,11 @@ void Kubo_solver_FFT_postProcess::Bastin_postProcess(const value_t final_data[],
   for(int k = 0; k < nump; k++){
     integrand[k]  = E_points_[k] * real( final_data[ k ] ) - ( sqrt(1.0 - E_points_[ k ] * E_points_[ k ] ) * imag( final_data[ k + nump ] ) );
     integrand[k] *= 1.0 / pow( (1.0 - E_points_[k]  * E_points_[k] ), 2.0);
-    integrand[k] *=  omega / ( M_PI ); 
+    integrand[k] *=  prefactor * omega ; 
 
     rvec_integrand[k]  = E_points_[k] * real( r_data[ k ] ) - ( sqrt(1.0 - E_points_[ k ] * E_points_[ k ] ) * real( r_data[ k + nump ] ) );
     rvec_integrand[k] *= 1.0 / pow( (1.0 - E_points_[k]  * E_points_[k] ), 2.0);
-    rvec_integrand[k] *=  omega / ( M_PI ); 
+    rvec_integrand[k] *=  prefactor *  omega ; 
   }
 
   rearrange_crescent_order(integrand);

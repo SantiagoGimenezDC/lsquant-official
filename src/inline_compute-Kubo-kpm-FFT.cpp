@@ -78,10 +78,10 @@ int main(int argc, char *argv[])
 
 	chebVec_2 = chebVec;
 
-	std::cout << "/*----------------------------------------------------------------------------*/" ;
-	std::cout << std::endl;
-	std::cout << "          THIS SOLVER IS TWEAKED FOR THE BISMUTHENE CASE ONLY!!!!!!        " << std::endl << std::endl;
-	std::cout << "/*----------------------------------------------------------------------------*/" ;
+	std::cout << "/*----------------------------------------------------------------------------------------*/" ;
+	std::cout << std::endl<< std::endl;
+	std::cout << "          THIS SOLVER & POSTPROCESS are TWEAKED FOR THE BISMUTHENE CASE ONLY!!!!!!         " << std::endl << std::endl;
+	std::cout << "/*----------------------------------------------------------------------------------------*/" ;
 	std::cout << std::endl;
 
 
