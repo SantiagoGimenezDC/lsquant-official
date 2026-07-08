@@ -66,10 +66,10 @@ namespace qstates
 			
 		}
 
-	        bool getQuantumState(int r ) //this is for Bismuthene only
+	        bool getQuantumState(size_t r ) //this is for Bismuthene only
 		{
 	
-		  size_t SUBDIM = out.size();
+		  size_t SUBDIM = size_t(out.size());
 
 		  size_t stride_ = 92;
 
@@ -80,6 +80,7 @@ namespace qstates
 		      out [j] = std::polar( 1.0, phase ) / sqrt(double(1.0/stride_));
 		    }
 		  }
+		  return true;
 		}
 	  
 		bool getQuantumState()
