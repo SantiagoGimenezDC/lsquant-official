@@ -70,7 +70,7 @@ void Kubo_solver_FFT::compute( SparseMatrixType &OPL, SparseMatrixType &OPR,  qs
 
     
     gen.SystemSize(DIM);
-    gen.getQuantumState(r);    
+    gen.getQuantumState();    
     //SELECT RUNNING TYPE
     polynomial_recursion(gen.State(),gen.State(), OPL, OPR, chebVecL_,chebVecR_, r_data);
 
