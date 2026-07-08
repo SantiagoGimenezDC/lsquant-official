@@ -34,7 +34,7 @@ namespace qstates
 	{
 		public:
 
-	  generator():count(0),dim(0),label("default"), num_states(1),kind(RANDOM_STATE){ srand(3);}
+	  generator():count(0),dim(0),label("default"), num_states(1),kind(RANDOM_STATE){ srand(time(0));}
 
 		int SystemSize() const
 		{
