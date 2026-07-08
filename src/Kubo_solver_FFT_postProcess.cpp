@@ -135,7 +135,7 @@ void Kubo_solver_FFT_postProcess::Bastin_postProcess(const value_t final_data[],
     b = parent_solver_.Hamiltonian().BandCenter();
     //    sysSubLength = device_.sysSubLength();
   
-  r_value_t omega = DIM/( a * a );//* sysSubLength * sysSubLength );//Dimensional and normalizing constant
+  r_value_t omega = DIM/( a * a  );//* sysSubLength * sysSubLength );//Dimensional and normalizing constant
 
 
   r_value_t prefactor = 2.0 / ( a * a * 6.776230343080986e-06 ); //omega/M_PI;

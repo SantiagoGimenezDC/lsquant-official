@@ -74,10 +74,11 @@ namespace qstates
 		  size_t stride_ = 92;
 
 		  for( size_t j = 0; j <  SUBDIM; j++ ){
-		    out [j] = 0;
+		    out [j] = 0.0;
 		    if( ( j - ( r - 1 ) ) % stride_ == 0){
 		      double phase = 2.0*M_PI*(double)rand() / (double)RAND_MAX ; 
 		      out [j] = std::polar( 1.0, phase ) / sqrt(double(1.0/stride_));
+		      
 		    }
 		  }
 		  return true;

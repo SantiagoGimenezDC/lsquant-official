@@ -75,6 +75,11 @@ void Kubo_solver_FFT::Bastin_FFTs(Vectors_sliced &chebVecL, Vectors_sliced &cheb
      im_D_kets.create();
    }
 
+   
+   //VectorList< Moments::value_t >  chebMu_L = chebVecL.Chebmu();
+   //VectorList< Moments::value_t >  chebMu_R = chebVecR.Chebmu();
+
+   
    for(int l = l_start; l < l_end; l++){
      for(int m = 0; m < M_; m++){
 	//The following casting allows to simplify all template instantiations: converts all to double.
@@ -84,7 +89,7 @@ void Kubo_solver_FFT::Bastin_FFTs(Vectors_sliced &chebVecL, Vectors_sliced &cheb
 
        std::complex<r_value_t> im_m = static_cast<std::complex<r_value_t>> (m);
 	
-       bra = chebVecL.Vector(m)[l];
+       bra = chebVecL.Vector(m)[l]; 
 
        //Bra Greens functions FFT inputs:
        re_bras.input()[m] = pre_factors[m] * real( bra );

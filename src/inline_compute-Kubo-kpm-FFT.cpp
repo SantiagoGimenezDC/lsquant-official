@@ -94,7 +94,7 @@ int main(int argc, char *argv[])
 	if( argc == 7)	
 		gen  = qstates::LoadStateFile(argv[6]);
 
-	std::string outputfilename="Greenwood_FFT"+S_OPR+"-"+S_OPL+LABEL+"KPM_M"+S_NUM_MOM+"x"+S_NUM_MOM+"_state"+gen.StateLabel()+".conductivity";
+	std::string outputfilename="Bastin_FFT"+S_OPR+"-"+S_OPL+LABEL+"KPM_M"+S_NUM_MOM+"x"+S_NUM_MOM+"_state"+gen.StateLabel()+".conductivity";
 
 	chebyshev::Kubo_solver_FFT solver(R, numMoms,  num_sections, nump, sym_formula, chebVec, chebVec_2,  outputfilename);
 	solver.compute( OP[1], OP[2], gen );

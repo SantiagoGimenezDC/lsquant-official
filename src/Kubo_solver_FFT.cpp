@@ -66,7 +66,7 @@ void Kubo_solver_FFT::compute( SparseMatrixType &OPL, SparseMatrixType &OPR,  qs
 
   while( r < R_)  { //gen.getQuantumState()    
     time_station randVec_time;
-    std::cout<<"Computing with ID: "<<gen.count<<" states" <<std::endl;
+    std::cout<<std::endl<<"Computing: "<<r+1<<"/"<< R_ <<std::endl;
 
     
     gen.SystemSize(DIM);
