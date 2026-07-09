@@ -4,6 +4,8 @@
 #include <fstream>
 #include <stdlib.h>
 #include <chrono>
+#include <cmath>
+#include <random>
 
 #include "kpm_noneqop.hpp"
 #include "chebyshev_moments.hpp"
@@ -46,7 +48,7 @@ int main(int argc, char *argv[])
     // OP[0] = Hamiltonian   → SparseMatrixType_kQuant (supports disorder + FFT)
     // OP[1] = spectral op   → plain SparseMatrixType
     SparseMatrixType_kQuant HAM;
-    SparseMatrixType        OP1;
+    SparseMatrixType        OP1, HAM_real;
 
     HAM.SetID("HAM");
     OP1.SetID(S_OP);
@@ -62,6 +64,14 @@ int main(int argc, char *argv[])
         spectral_bounds = chebyshev::utility::SpectralBounds(HAM);
     }
 
+    // ── Load Hamiltonian ──────────────────────────────────────────────────────
+    {
+        std::string input = "operators/" + LABEL + "_r.HAM.CSR";
+        builder.setSparseMatrix(&HAM_real);
+        builder.BuildOPFromCSRFile(input);
+        spectral_bounds = chebyshev::utility::SpectralBounds(HAM_real);
+    }
+    
     // ── Load Bloch phases and set up FFTW ─────────────────────────────────────
     {
         std::string phases_file = "operators/" + LABEL + ".BLOCH_PHASES";
@@ -106,11 +116,12 @@ int main(int argc, char *argv[])
     chebMoms.SystemLabel(LABEL);
     chebMoms.BandWidth (half_width);
     chebMoms.BandCenter(band_center);
-    chebMoms.SetAndRescaleHamiltonian(HAM);
+    //chebMoms.SetAndRescaleHamiltonian(HAM);
     chebMoms.Print();
 
 
 
+    
     std::ifstream fin("operators/onsite.txt");
     if (!fin) {
        throw std::runtime_error("Could not open onsite.txt");
@@ -123,7 +134,6 @@ int main(int argc, char *argv[])
        onsite.emplace_back(ons, 0.0);
 
     
- 
     // Rescale disorder to adimensionalised units now that BandWidth is known.
     // H_bar = (H - b)/a  →  V_bar = V/a  →  disorder entries must be /a too.
     if (disorder_amplitude > 0.0 && !HAM.disorder.empty())
@@ -131,9 +141,58 @@ int main(int argc, char *argv[])
         const double a = half_width;
         std::cout << "Rescaling disorder by 1/a = " << 1.0/a << std::endl;
         for (auto& v : HAM.disorder)
-	  v = ons/a;  ///= a;
+            v = -0.0 ;
     }
 
+
+
+
+    size_t size = HAM.numRows();
+    
+    // Random number generator
+    std::mt19937 rng(45);//std::random_device{}()
+
+    // Vector of complex numbers
+    std::vector<std::complex<double>> v(size), out_R(size), out_K(size), tmp_K(size), tmp_K2(size);
+ 
+    std::uniform_real_distribution<double> angle(0.0, 2.0 * M_PI);
+
+    for (auto &z : v) {
+      double theta = angle(rng);
+      z = {std::cos(theta), std::sin(theta)};
+    }
+
+    
+    auto HAM_matrix = HAM_real.Matrix();
+    using Complex = std::complex<double>;
+
+    for (Eigen::Index i = 0; i < HAM_matrix->rows(); ++i)
+       HAM_matrix->coeffRef(i, i) = Complex(-0.0, 0.0);
+
+    HAM_matrix->makeCompressed();
+
+
+ 
+    HAM_real.Multiply( 1.0, v, 0.0, out_R );
+
+
+    
+    HAM.apply_B_FFT(tmp_K.data(),v.data());
+
+    HAM.Multiply_kQuant(1.0, tmp_K, 0.0, tmp_K2);
+    
+    HAM.apply_Bdagger_FFT(out_K.data(),tmp_K2.data());
+
+    
+
+    for(int i =size-10;i<size;i++)
+      std::cout<<out_K[i]<<"          "<<out_R[i]<<std::endl;
+
+    
+
+
+    
+    /*
     // ── Random state generator ────────────────────────────────────────────────
     qstates::generator gen;
     if (has_state_file)
@@ -144,6 +203,8 @@ int main(int argc, char *argv[])
 
     postProcess(chebMoms);
 
+    */
+    
     std::cout << "End of program" << std::endl;
     return 0;
 }

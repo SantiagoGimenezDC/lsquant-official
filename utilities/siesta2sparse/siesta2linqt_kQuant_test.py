@@ -425,7 +425,7 @@ def main():
         
         # ── Disorder! ──────────────────────────────────────────
 	# Anderson disorder strength (eV)
-    	W = 3
+    	W = 3.0
 
 	# Number of orbitals
     	N = Hr_blk.shape[0]
@@ -433,6 +433,9 @@ def main():
     	# Uniform random onsite energies in [-W/2, W/2]
     	onsite = np.random.uniform(-W/2, W/2, size=N)
 
+	
+    	np.savetxt("onsite.txt", onsite, fmt="%.16e")
+    	
     	# Add disorder to the Hamiltonian
     	from scipy.sparse import diags
     	Hr_blk = Hr_blk + diags(onsite, format="csr")

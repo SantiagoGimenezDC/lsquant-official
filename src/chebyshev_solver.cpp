@@ -667,7 +667,8 @@ int chebyshev::SpectralMoments( SparseMatrixType &OP,  chebyshev::Moments1D &che
 	const auto NumMoms = chebMoms.HighestMomentNumber();
 
 	gen.SystemSize(Dim);
-	while( gen.getQuantumState() )
+	//while( gen.getQuantumState() )
+	gen.getQuantumState();
 	{		
 		auto Phi = gen.State();
 		//Set the evolved vector as initial vector of the chebyshev iterations
@@ -693,10 +694,14 @@ int chebyshev::SpectralMoments_kQuant(  chebyshev::Moments1D_kQuant &chebMoms, q
 	const auto Dim = chebMoms.SystemSize();
 	const auto NumMoms = chebMoms.HighestMomentNumber();
 
+
 	gen.SystemSize(Dim);
-	while( gen.getQuantumState() )
+	//while( gen.getQuantumState() )
+	gen.getQuantumState();
 	{		
 		auto Phi = gen.State();
+
+
 		//Set the evolved vector as initial vector of the chebyshev iterations
 		chebMoms.SetInitVectors( Phi );
 			

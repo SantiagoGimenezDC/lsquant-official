@@ -80,6 +80,8 @@ public:
     matrix_ = new_matrix;
     setDimensions(new_matrix.rows(),new_matrix.cols());
   };
+
+  Eigen::SparseMatrix<complex<double>, Eigen::RowMajor, indexType>* Matrix(){return &matrix_;};
   
 private:
   Eigen::SparseMatrix<complex<double>, Eigen::RowMajor, indexType> matrix_;
@@ -207,6 +209,10 @@ public:
     void Multiply_kQuant(const value_t , const value_t *, const value_t , value_t * ) ;
     void Multiply_kQuant(const value_t , const vector_t& , const value_t , vector_t& );
 
+    void Multiply_kQuant_bak(const value_t , const value_t *, const value_t , value_t * ) ;
+    void Multiply_kQuant_bak(const value_t , const vector_t& , const value_t , vector_t& );
+
+  
   //  virtual  void Multiply(const value_t , const value_t*,  const value_t ,       value_t*   ) override;
   //virtual void Multiply(const value_t , const vector_t&  , const value_t ,       vector_t&  ) override;
 
@@ -214,6 +220,9 @@ public:
     void apply_B       (value_t* out, const value_t* in) const;
     void apply_Bdagger (value_t* out, const value_t* in) const;
 
+    void apply_B_FFT( value_t* out, const value_t* in);
+    void apply_Bdagger_FFT( value_t* out, const value_t* in);
+  
 private:
     // Working buffer for the disorder application (size Nk*W, FFTW-aligned)
     std::vector<value_t> fft_buf;

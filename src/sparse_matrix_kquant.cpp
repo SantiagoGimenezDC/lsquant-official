@@ -89,6 +89,18 @@ bool SparseMatrixType_kQuant::ReadPhasesFromFile(const std::string& filename)
 
     std::fclose(f);
     std::cout << "  Bloch phases loaded successfully." << std::endl;
+
+
+for (int ik = 0; ik < Nk; ++ik) {
+    int expected = n_grid[ik][0]*ky*kz + n_grid[ik][1]*kz + n_grid[ik][2];
+    if (expected != ik) {
+        std::cerr << "k-point ordering mismatch at ik=" << ik
+                  << "  expected flat=" << expected << std::endl;
+        break;
+    }
+}
+
+
     return true;
 }
 
@@ -118,6 +130,42 @@ void SparseMatrixType_kQuant::apply_B(value_t* out, const value_t* in) const
         }
     }
 }
+/*
+void SparseMatrixType_kQuant::apply_B_FFT( value_t* out, const value_t* in)
+{
+    const int N = Nk * W;
+
+    if (!plan_fwd || !plan_bwd)
+        throw std::runtime_error("PrepareFFT() must be called before Multiply.");
+
+    // Step 1: premultiply by conj(atom_phases)  →  ready for B†
+    #pragma omp parallel for schedule(static)
+    for (int i = 0; i < N; ++i)
+        fft_buf[i] = std::conj(atom_phases[i]) * in[i];
+
+    // Step 2: FFTW_FORWARD  →  B†x in real space  (indexed by iR)
+    fftw_execute(plan_fwd);
+
+
+
+    // Step 5: postmultiply by atom_phases + normalise + accumulate into y
+    const value_t scale = 1.0 / sqrt( static_cast<double>(Nk) );
+    #pragma omp parallel for schedule(static)
+    for (int i = 0; i < N; ++i)
+        out[i] += scale * atom_phases[i] * fft_buf[i];
+	}*/
+void SparseMatrixType_kQuant::apply_B_FFT(value_t* out, const value_t* in)
+{
+    const int N = Nk * W;
+    for (int i = 0; i < N; ++i)
+        fft_buf[i] = in[i];
+
+    fftw_execute(plan_bwd);   // computes exact lattice sum, no normalization
+
+    for (int i = 0; i < N; ++i)
+        out[i] = atom_phases[i] * fft_buf[i];   // atom_phases already has 1/√Nk
+}
+
 
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -145,6 +193,44 @@ void SparseMatrixType_kQuant::apply_Bdagger(value_t* out, const value_t* in) con
         }
     }
 }
+
+void SparseMatrixType_kQuant::apply_Bdagger_FFT(value_t* out, const value_t* in)
+{
+    const int N = Nk * W;
+
+    // premultiply by conj(atom_phases)  (first part of B†)
+    for (int i = 0; i < N; ++i)
+        fft_buf[i] = std::conj(atom_phases[i]) * in[i];
+
+    // FORWARD FFT: exp(-i·2π·k·n/N)  →  completes B†, no normalisation needed
+    fftw_execute(plan_fwd);
+
+    for (int i = 0; i < N; ++i)
+        out[i] = fft_buf[i];
+}
+
+/*
+void SparseMatrixType_kQuant::apply_Bdagger_FFT( value_t* out, const value_t* in)
+{
+    const int N = Nk * W;
+
+    // Step 1: premultiply by conj(atom_phases)  →  ready for B†
+    #pragma omp parallel for schedule(static)
+    for (int i = 0; i < N; ++i)
+        fft_buf[i] =  in[i];
+
+    // Step 4: FFTW_BACKWARD  →  unnormalised real→k transform
+    fftw_execute(plan_bwd);
+
+
+    // Step 5: postmultiply by atom_phases + normalise + accumulate into y
+    const value_t scale = 1.0 / sqrt( static_cast<double>(Nk) );
+    #pragma omp parallel for schedule(static)
+    for (int i = 0; i < N; ++i)
+        out[i] = scale * atom_phases[i] * fft_buf[i];
+}
+*/
+
 
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -200,10 +286,12 @@ void SparseMatrixType_kQuant::GenerateAndersonDisorder(double amplitude,
     disorder.resize(Nk * W);
     std::srand(seed);
     for (int iR = 0; iR < Nk; ++iR) {
-        // One random value per unit cell, shared across all orbitals
-        double v = amplitude * (static_cast<double>(std::rand()) / RAND_MAX - 0.5);
-        for (int alpha = 0; alpha < W; ++alpha)
-            disorder[iR * W + alpha] = value_t(v, 0.0);
+        //NO! --> One random value per unit cell, shared across all orbitals
+        
+      for (int alpha = 0; alpha < W; ++alpha){
+	  double v = amplitude * (static_cast<double>(std::rand()) / RAND_MAX - 0.5);
+	  disorder[iR * W + alpha] = value_t(v, 0.0);
+      }
     }
     std::cout << "  Anderson disorder generated: amplitude=" << amplitude
               << ", seed=" << seed << std::endl;
@@ -225,7 +313,7 @@ void SparseMatrixType_kQuant::GenerateAndersonDisorder(double amplitude,
 //
 // The 1/Nk in step 5 normalises the unnormalised FFTW backward transform.
 // ─────────────────────────────────────────────────────────────────────────────
-void SparseMatrixType_kQuant::Multiply_kQuant(const value_t  a,
+void SparseMatrixType_kQuant::Multiply_kQuant_bak(const value_t  a,
                                         const value_t* x,
                                               value_t  b,
                                               value_t* y)
@@ -272,6 +360,53 @@ void SparseMatrixType_kQuant::Multiply_kQuant(const value_t  a,
     for (int i = 0; i < N; ++i)
         y[i] += scale * atom_phases[i] * fft_buf[i];
 }
+
+void SparseMatrixType_kQuant::Multiply_kQuant_bak(const value_t  a,
+                                        const vector_t& x,
+                                              value_t   b,
+                                              vector_t& y)
+{
+    SparseMatrixType_kQuant::Multiply_kQuant(a, x.data(), b, y.data());
+}
+
+
+
+
+
+
+
+
+
+void SparseMatrixType_kQuant::Multiply_kQuant(const value_t  a,
+                                               const value_t* x,
+                                                     value_t  b,
+                                                     value_t* y)
+{
+    const int N = Nk * W;
+
+    SparseMatrixType::Multiply(a, x, b, y);
+
+    if (disorder.empty()) return;
+
+    // Use two separate buffers — fft_buf is used internally by both FFT functions
+    std::vector<value_t> real_buf(N);   // holds B|x⟩ in real space
+    std::vector<value_t> k_buf(N);      // holds B†(V·B|x⟩) in k space
+
+    apply_B_FFT(real_buf.data(), x);    // real_buf = B|x⟩
+
+    for (int i = 0; i < N; ++i)
+      real_buf[i] *= disorder[i];     // real_buf = V·B|x⟩  (or -0.1 for test)
+      
+    
+    apply_Bdagger_FFT(k_buf.data(), real_buf.data());  // k_buf = B†V·B|x⟩
+
+    
+    for (int i = 0; i < N; ++i)
+        y[i] += a * k_buf[i];
+
+    
+}
+
 
 void SparseMatrixType_kQuant::Multiply_kQuant(const value_t  a,
                                         const vector_t& x,

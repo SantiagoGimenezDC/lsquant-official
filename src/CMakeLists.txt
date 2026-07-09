@@ -203,6 +203,12 @@ add_executable(${MAIN} inline_kpm_dos_kQuant.cpp )
 target_link_libraries(${MAIN} ${KPM_LIB} )
 
 
+set(MAIN sparse_matrix_kQuant_test )
+add_executable(${MAIN} sparse_matrix_kQuant_test.cpp )
+target_link_libraries(${MAIN} ${KPM_LIB} )
+
+
+
 set(MAIN device-postProcess )
 add_executable(${MAIN} device-postProcess.cpp  )
 target_link_libraries(${MAIN} ${KPM_LIB} )
