@@ -182,8 +182,9 @@ void postProcess(chebyshev::Moments1D_kQuant& mu)
         const double energ = energies[i];
         for (int m = 0; m < numMoms; ++m)
             val += delta_chebF(energ, m) * mu(m).real();
-        output[i] = val / mu.HalfWidth();
+        output[i] = val * mu.SystemSize() / mu.HalfWidth();
     }
+    
 
     for (int i = 0; i < num_div; ++i)
         outputfile << energies[i] * mu.HalfWidth() + mu.BandCenter()

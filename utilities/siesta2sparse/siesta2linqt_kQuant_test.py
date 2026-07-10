@@ -425,13 +425,14 @@ def main():
         
         # ── Disorder! ──────────────────────────────────────────
 	# Anderson disorder strength (eV)
-    	W = 3.0
+    	W = 1.0
 
 	# Number of orbitals
     	N = Hr_blk.shape[0]
 
     	# Uniform random onsite energies in [-W/2, W/2]
     	onsite = np.random.uniform(-W/2, W/2, size=N)
+    	#onsite = np.full(N, -1.0)
 
 	
     	np.savetxt("onsite.txt", onsite, fmt="%.16e")

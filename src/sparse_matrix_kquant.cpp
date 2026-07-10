@@ -392,13 +392,13 @@ void SparseMatrixType_kQuant::Multiply_kQuant(const value_t  a,
     std::vector<value_t> real_buf(N);   // holds B|x⟩ in real space
     std::vector<value_t> k_buf(N);      // holds B†(V·B|x⟩) in k space
 
-    apply_B_FFT(real_buf.data(), x);    // real_buf = B|x⟩
+    apply_Bdagger_FFT(real_buf.data(), x);    // real_buf = B|x⟩
 
     for (int i = 0; i < N; ++i)
       real_buf[i] *= disorder[i];     // real_buf = V·B|x⟩  (or -0.1 for test)
       
     
-    apply_Bdagger_FFT(k_buf.data(), real_buf.data());  // k_buf = B†V·B|x⟩
+    apply_B_FFT(k_buf.data(), real_buf.data());  // k_buf = B†V·B|x⟩
 
     
     for (int i = 0; i < N; ++i)

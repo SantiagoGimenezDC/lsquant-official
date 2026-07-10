@@ -153,7 +153,7 @@ void postProcess(chebyshev::Moments1D& mu ){
 		const double energ = energies[i];
 		for( int m0 = 0 ; m0 < mu.HighestMomentNumber() ; m0++)
 			output[i] += delta_chebF(energ,m0)*mu(m0).real() ;
-		output[i] *= 76.35393363613369/mu.HalfWidth();//  mu.SystemSize()/mu.HalfWidth();
+		output[i] *=   mu.SystemSize()/mu.HalfWidth(); //76.35393363613369/mu.HalfWidth();//
 	}
 
 	for( int i=0; i < num_div; i++)

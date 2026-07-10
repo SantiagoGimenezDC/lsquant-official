@@ -133,7 +133,7 @@ int main(int argc, char *argv[])
     while (fin >> ons)
        onsite.emplace_back(ons, 0.0);
 
-    
+    HAM.disorder=onsite;
     // Rescale disorder to adimensionalised units now that BandWidth is known.
     // H_bar = (H - b)/a  →  V_bar = V/a  →  disorder entries must be /a too.
     if (disorder_amplitude > 0.0 && !HAM.disorder.empty())
@@ -141,7 +141,7 @@ int main(int argc, char *argv[])
         const double a = half_width;
         std::cout << "Rescaling disorder by 1/a = " << 1.0/a << std::endl;
         for (auto& v : HAM.disorder)
-            v = -0.0 ;
+            v = v ;
     }
 
 
@@ -162,19 +162,22 @@ int main(int argc, char *argv[])
       z = {std::cos(theta), std::sin(theta)};
     }
 
-    
+    /*
     auto HAM_matrix = HAM_real.Matrix();
     using Complex = std::complex<double>;
 
+    
     for (Eigen::Index i = 0; i < HAM_matrix->rows(); ++i)
-       HAM_matrix->coeffRef(i, i) = Complex(-0.0, 0.0);
-
+       HAM_matrix->coeffRef(i, i) = Complex(-1.0, 0.0);
+    
     HAM_matrix->makeCompressed();
-
+    */
 
  
     HAM_real.Multiply( 1.0, v, 0.0, out_R );
 
+
+    
 
     
     HAM.apply_B_FFT(tmp_K.data(),v.data());

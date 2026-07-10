@@ -671,6 +671,7 @@ int chebyshev::SpectralMoments( SparseMatrixType &OP,  chebyshev::Moments1D &che
 	gen.getQuantumState();
 	{		
 		auto Phi = gen.State();
+		
 		//Set the evolved vector as initial vector of the chebyshev iterations
 		if (OP.isIdentity() )
 			chebMoms.SetInitVectors( Phi );
@@ -699,8 +700,10 @@ int chebyshev::SpectralMoments_kQuant(  chebyshev::Moments1D_kQuant &chebMoms, q
 	//while( gen.getQuantumState() )
 	gen.getQuantumState();
 	{		
-		auto Phi = gen.State();
-
+		auto Phi0 = gen.State();
+		auto Phi= Phi0;
+		chebMoms.Ham()->apply_B_FFT(Phi.data(),Phi0.data());
+		
 
 		//Set the evolved vector as initial vector of the chebyshev iterations
 		chebMoms.SetInitVectors( Phi );
