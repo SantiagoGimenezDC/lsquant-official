@@ -17,7 +17,7 @@ namespace spectral
     void printWelcomeMessage();
 };
 
-void postProcess(chebyshev::Moments1D_kQuant&);
+void postProcess(chebyshev::Moments1D_kQuant_nonOrth&);
 
 
 int main(int argc, char *argv[])
@@ -40,15 +40,17 @@ int main(int argc, char *argv[])
     const double disorder_amplitude = (argc >= 5) ? std::stod(argv[4]) : 0.0;
     const bool   has_state_file  = (argc == 6);
 
-    chebyshev::Moments1D_kQuant chebMoms(numMoms);
+    chebyshev::Moments1D_kQuant_nonOrth chebMoms(numMoms);
 
     // ── Operators ─────────────────────────────────────────────────────────────
     // OP[0] = Hamiltonian   → SparseMatrixType_kQuant (supports disorder + FFT)
     // OP[1] = spectral op   → plain SparseMatrixType
-    SparseMatrixType_kQuant HAM;
-    SparseMatrixType        OP1;
+    SparseMatrixType_kQuant_nonOrth HAM;
+    SparseMatrixType        OP1, OP_S;
 
     HAM.SetID("HAM");
+    OP_S.SetID("S");
+
     OP1.SetID(S_OP);
 
     SparseMatrixBuilder builder;
@@ -99,6 +101,17 @@ int main(int argc, char *argv[])
         builder.BuildOPFromCSRFile(input);
     }
 
+
+    {
+        std::string input = "operators/" + LABEL + ".S.CSR";
+        builder.setSparseMatrix(&OP_S);
+        builder.BuildOPFromCSRFile(input);
+	HAM.set_S(OP_S.Matrix());
+	HAM.set_Hk(HAM.Matrix());
+
+    }
+
+    
     // ── Configure Chebyshev moments ───────────────────────────────────────────
     const double half_width  = (spectral_bounds[1] - spectral_bounds[0]) * 1.0;
     const double band_center = (spectral_bounds[1] + spectral_bounds[0]) * 0.5;
@@ -108,13 +121,13 @@ int main(int argc, char *argv[])
     chebMoms.BandCenter(band_center);
     chebMoms.SetAndRescaleHamiltonian(HAM);
     chebMoms.Print();
-
+    
 
 
 
 
     
-    /* FOR TESTING ONSITE
+    /*FOR TESTING AGAINST REAL SPACE ONLY
     std::ifstream fin("operators/onsite.txt");
     if (!fin) {
        throw std::runtime_error("Could not open onsite.txt");
@@ -147,7 +160,7 @@ int main(int argc, char *argv[])
         gen = qstates::LoadStateFile(argv[5]);
 
     // ── Run KPM ───────────────────────────────────────────────────────────────
-    chebyshev::SpectralMoments_kQuant( chebMoms, gen);
+    chebyshev::SpectralMoments_kQuant_nonOrth( chebMoms, gen);
 
     postProcess(chebMoms);
 
@@ -156,7 +169,7 @@ int main(int argc, char *argv[])
 }
 
 
-void postProcess(chebyshev::Moments1D_kQuant& mu)
+void postProcess(chebyshev::Moments1D_kQuant_nonOrth& mu)
 {
     const int numMoms   = mu.HighestMomentNumber();
     double    broadening = 1.0 / double(numMoms);

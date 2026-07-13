@@ -79,6 +79,17 @@ void linalg::axpy(const int dim, std::complex<double> a, const std::complex<doub
 	return ;
 }
 
+void linalg::axpy( std::complex<double> a, const Eigen::Vector<std::complex<double>, -1>& x, Eigen::Vector<std::complex<double>, -1>& y)
+{
+
+	y = a * x + y;
+	
+	return ;
+}
+
+
+
+
 void linalg::copy(const int dim, const std::complex<double> *x, std::complex<double> *y)
 {
         Eigen::Map<const Eigen::Vector<std::complex<double>, -1>>
@@ -164,6 +175,58 @@ void linalg::orthogonalize(SparseMatrixType& S, const std::vector< std::complex<
   
   
   std::cout << "#iterations:     " << solver.iterations() << std::endl;
+  /*
+  std::cout << "  max#iterations:" << solver.maxIterations() << std::endl;
+  std::cout << "estimated error: " << solver.error()      << std::endl;
+  std::cout << "  tolerance :    " << solver.tolerance()      << std::endl;
+  std::cout<<  "Vector norm :    " <<eig_original.norm()<<std::endl;    
+  */
+};
+
+
+void linalg::orthogonalize(const size_t Dim, Eigen::SparseMatrix<std::complex<double>,  Eigen::RowMajor, indexType>* S, const std::complex<double>* original, std::complex<double>* orthogonalized){
+
+  
+  Eigen::Map<const Eigen::Vector<std::complex<double>, -1>>
+    eig_original(original, Dim);
+  Eigen::Map<Eigen::Vector<std::complex<double>, -1>>
+    eig_orthogonalized(orthogonalized, Dim);
+
+
+  //eig_orthogonalized=eig_original;
+
+    
+  Eigen::ConjugateGradient<  Eigen::SparseMatrix<std::complex<double>,  Eigen::RowMajor, indexType>, Eigen::Lower,  Eigen::DiagonalPreconditioner< std::complex<double>> > solver;
+  solver.setTolerance(0.0000001); 
+  solver.setMaxIterations(1000); 
+  solver.compute((*S));
+  eig_orthogonalized = solver.solve(eig_original);
+  
+  
+  //std::cout << "#iterations:     " << solver.iterations() << std::endl;
+  /*
+  std::cout << "  max#iterations:" << solver.maxIterations() << std::endl;
+  std::cout << "estimated error: " << solver.error()      << std::endl;
+  std::cout << "  tolerance :    " << solver.tolerance()      << std::endl;
+  std::cout<<  "Vector norm :    " <<eig_original.norm()<<std::endl;    
+  */
+};
+
+
+
+void linalg::orthogonalize(SparseMatrixType& S, const Eigen::Vector<std::complex<double>, -1>& eig_original, Eigen::Vector<std::complex<double>, -1>& eig_orthogonalized){
+
+  //eig_orthogonalized=eig_original;
+
+    
+  Eigen::ConjugateGradient<  Eigen::SparseMatrix<std::complex<double>,  Eigen::RowMajor, indexType>, Eigen::Lower,  Eigen::DiagonalPreconditioner< std::complex<double>> > solver;
+  solver.setTolerance(0.0000001); 
+  solver.setMaxIterations(1000); 
+  solver.compute(S.eigen_matrix());
+  eig_orthogonalized = solver.solve(eig_original);
+  
+  
+  //std::cout << "#iterations:     " << solver.iterations() << std::endl;
   /*
   std::cout << "  max#iterations:" << solver.maxIterations() << std::endl;
   std::cout << "estimated error: " << solver.error()      << std::endl;

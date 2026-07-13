@@ -40,6 +40,24 @@ void chebyshev::Moments_kQuant::SetInitVectors( SparseMatrixType_kQuant &OP ,con
 	return ;
 };
 
+void chebyshev::Moments_kQuant_nonOrth::SetInitVectors( SparseMatrixType_kQuant_nonOrth &OP ,const Moments_kQuant::vector_t& T0 )
+{
+	const auto dim = this->SystemSize();
+	assert( OP.rank() == this->SystemSize() && T0.size() == this->SystemSize() );
+
+	if( this->Chebyshev0().size()!= dim )
+		this->Chebyshev0() = Moments_kQuant::vector_t(dim,Moments_kQuant::value_t(0)); 
+
+	if( this->Chebyshev1().size()!= dim )
+		this->Chebyshev1() = Moments_kQuant::vector_t(dim,Moments_kQuant::value_t(0)); 
+	//From now on this-> will be discarded in Chebyshev0() and Chebyshev1()
+
+	linalg::copy ( T0, this->Chebyshev1() );
+	OP.Multiply( 1.0, this->Chebyshev1(), 0.0, this->Chebyshev0() );
+	this->Hamiltonian().Multiply( 1.0, this->Chebyshev0(), 0.0, this->Chebyshev1() );
+
+	return ;
+};
 
 
 
@@ -73,6 +91,24 @@ void chebyshev::Moments_kQuant::SetInitVectors( const Moments_kQuant::vector_t& 
 
 	linalg::copy ( T0, this->Chebyshev0() );
 	this->Hamiltonian().Multiply_kQuant( 1.0, this->Chebyshev0(), 0.0, this->Chebyshev1() );
+
+};
+
+
+void chebyshev::Moments_kQuant_nonOrth::SetInitVectors( const Moments_kQuant_nonOrth::vector_t& T0 )
+{
+	assert( T0.size() == this->SystemSize() );
+	const auto dim = this->SystemSize();
+
+	if( this->Chebyshev0().size()!= dim )
+		this->Chebyshev0() = Moments_kQuant::vector_t(dim,Moments_kQuant::value_t(0)); 
+
+	if( this->Chebyshev1().size()!= dim )
+		this->Chebyshev1() = Moments_kQuant::vector_t(dim,Moments_kQuant::value_t(0)); 
+	//From now on this-> will be discarded in Chebyshev0() and Chebyshev1()
+
+	linalg::copy ( T0, this->Chebyshev0() );
+	this->Hamiltonian().Multiply( 1.0, this->Chebyshev0(), 0.0, this->Chebyshev1() );
 
 };
 
@@ -296,6 +332,16 @@ int chebyshev::Moments::Iterate( )
 int chebyshev::Moments_kQuant::Iterate( )
 {
 	this->Ham()->Multiply_kQuant(2.0,this->Chebyshev1(),-1.0,this->Chebyshev0());
+	this->Chebyshev0().swap(this->Chebyshev1());
+	return 0;
+};
+
+
+
+
+int chebyshev::Moments_kQuant_nonOrth::Iterate( )
+{
+	this->Ham()->Multiply(2.0,this->Chebyshev1(),-1.0,this->Chebyshev0());
 	this->Chebyshev0().swap(this->Chebyshev1());
 	return 0;
 };

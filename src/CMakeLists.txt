@@ -21,6 +21,7 @@ set(KPM_LIB_SOURCES
  "Device/Device.cpp"
  "Device/Graphene_KaneMele.cpp"
  "sparse_matrix_kquant.cpp"
+ "sparse_matrix_kquant_nonOrth.cpp"
  
  
  "chebyshev_solver_Device.cpp"
@@ -201,6 +202,12 @@ target_link_libraries(${MAIN} ${KPM_LIB} )
 set(MAIN inline_kpm_dos_kQuant )
 add_executable(${MAIN} inline_kpm_dos_kQuant.cpp )
 target_link_libraries(${MAIN} ${KPM_LIB} )
+
+
+set(MAIN inline_kpm_dos_kQuant_nonOrth )
+add_executable(${MAIN} inline_kpm_dos_kQuant_nonOrth.cpp )
+target_link_libraries(${MAIN} ${KPM_LIB} )
+
 
 
 set(MAIN sparse_matrix_kQuant_test )

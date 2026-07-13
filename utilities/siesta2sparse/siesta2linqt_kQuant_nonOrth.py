@@ -209,6 +209,7 @@ def orth_operators_k(H_source, k, gauge: str):
     dSk_y = dSk[1].toarray().astype(complex)
 
     # S^{-1/2}  and  S^{-1}
+    Sinvh = sqrt_inv(Sk)           # S^{-1/2}
     Sinv  = Sinvh @ Sinvh          # S^{-1}  = (S^{-1/2})²
 
     # Löwdin Hamiltonian
@@ -252,6 +253,70 @@ def nonOrth_operators_k(H_source, k, gauge: str):
 
     return Hk, Sk, dHk_x, dHk_y, dSk_x, dSk_y
 
+
+def build_nonOrth_operators(H_source, kx: int, ky: int, kz: int, gauge: str):
+    """
+    Loop over the kx×ky×kz grid, compute Löwdin operators at each k,
+    and return block-diagonal sparse matrices.
+
+    Returns
+    -------
+    H_blk  : scipy sparse CSR  (Nk*W, Nk*W)
+    Vx_blk : scipy sparse CSR
+    Vy_blk : scipy sparse CSR  (or None if compute_vy=False)
+    """
+    K1, K2, K3 = np.mgrid[0:kx, 0:ky, 0:kz]
+    Ks = np.column_stack([
+        K1.ravel() / kx,
+        K2.ravel() / ky,
+        K3.ravel() / kz,
+    ])
+    Nk = len(Ks)
+
+    print(f"  k-grid: {kx}×{ky}×{kz} = {Nk} k-points")
+
+    Hk_list  = []
+    Sk_list  = []
+    dHk_x_list = []
+    dHk_y_list = []
+    dSk_x_list  = []
+    dSk_y_list = []  
+
+    t0 = time.time()
+    for ik, k in enumerate(Ks):
+        Hk, Sk, dHk_x, dHk_y, dSk_x, dSk_y = nonOrth_operators_k(H_source, k, gauge)
+        
+        Hk_list .append(csr_matrix(Hk))
+        Sk_list .append(csr_matrix(Sk))
+        dHk_x_list.append(csr_matrix(dHk_x))
+        dHk_y_list.append(csr_matrix(dHk_y))
+        dSk_x_list.append(csr_matrix(dSk_x))
+        dSk_y_list.append(csr_matrix(dSk_y))
+
+        # Progress on same line
+        elapsed = time.time() - t0
+        rate    = (ik + 1) / elapsed if elapsed > 0 else 0
+        eta     = (Nk - ik - 1) / rate if rate > 0 else 0
+        print(f"  k-point {ik+1}/{Nk}  |  {rate:.1f} k/s  |  ETA {eta:.0f}s   ",
+              end='\r', flush=True)
+
+    print(f"\n  Done in {time.time()-t0:.1f}s")
+
+    print("  Assembling block-diagonal matrices ...", end=' ', flush=True)
+    Hk_blk  = block_diag(Hk_list,  format='csr')
+    Sk_blk  = block_diag(Sk_list,  format='csr')
+    dHk_x_blk = block_diag(dHk_x_list, format='csr')
+    dHk_y_blk = block_diag(dHk_y_list, format='csr')
+    dSk_x_blk = block_diag(dSk_x_list, format='csr')
+    dSk_y_blk = block_diag(dSk_y_list, format='csr')
+    print("done")
+
+    return Hk_blk, Sk_blk, dHk_x_blk, dHk_y_blk, dSk_x_blk, dSk_y_blk
+
+
+
+
+
 # ─────────────────────────────────────────────────────────────────────────────
 # Build full block-diagonal supercell operators
 # ─────────────────────────────────────────────────────────────────────────────
@@ -283,7 +348,7 @@ def build_operators(H_source, kx: int, ky: int, kz: int, gauge: str):
 
     t0 = time.time()
     for ik, k in enumerate(Ks):
-        H_orth, Vx, Vy = lowdin_operators_k(H_source, k, gauge)
+        H_orth, Vx, Vy = orth_operators_k(H_source, k, gauge)
         H_list .append(csr_matrix(H_orth))
         Vx_list.append(csr_matrix(Vx))
         Vy_list.append(csr_matrix(Vy))
@@ -448,20 +513,39 @@ def main():
     
     print("   The area per atom is: ", (cell[0,0]*cell[1,1] - cell[0,1]*cell[1,0])/na )
 
-    # ── Build Löwdin operators ────────────────────────────────────────────────
-    print(f"\nBuilding Löwdin operators on {args.kx}×{args.ky}×{args.kz} grid ...")
+    # ── Build orth operators ────────────────────────────────────────────────
+    print(f"\nBuilding S^-1 orthonormalized operators on {args.kx}×{args.ky}×{args.kz} grid ...")
     H_blk, Vx_blk, Vy_blk, Ks = build_operators(
         H_src, args.kx, args.ky, args.kz, gauge=args.gauge
-    )
-
-
-
+    )    
 
     # ── Write outputs ─────────────────────────────────────────────────────────
     print("\nWriting CSR files ...")
-    write_linqt_csr(H_blk,  f"{prefix}.HAM.CSR")
-    write_linqt_csr(Vx_blk, f"{prefix}.VX.CSR")
-    write_linqt_csr(Vy_blk, f"{prefix}.VY.CSR")
+    write_linqt_csr(H_blk,  f"{prefix}_orth.HAM.CSR")
+    write_linqt_csr(Vx_blk, f"{prefix}_orth.VX.CSR")
+    write_linqt_csr(Vy_blk, f"{prefix}_orth.VY.CSR")
+    
+    
+    
+        
+
+    # ── Build nonOrth operators ────────────────────────────────────────────────
+    print(f"\nBuilding nonOrthonormalized operators on {args.kx}×{args.ky}×{args.kz} grid ...")
+    Hk_blk, Sk_blk, dHk_x_blk, dHk_y_blk, dSk_x_blk, dSk_y_blk = build_nonOrth_operators(
+        H_src, args.kx, args.ky, args.kz, gauge=args.gauge
+    )
+
+    # ── Write outputs ─────────────────────────────────────────────────────────
+    print("\nWriting CSR files ...")
+    write_linqt_csr(Hk_blk,  f"{prefix}.HAM.CSR")
+    write_linqt_csr(Sk_blk,  f"{prefix}.S.CSR")
+    write_linqt_csr(dHk_x_blk, f"{prefix}.dHk_x.CSR")
+    write_linqt_csr(dHk_y_blk, f"{prefix}.dHk_y.CSR")
+    write_linqt_csr(dSk_x_blk, f"{prefix}.dSk_x.CSR")
+    write_linqt_csr(dSk_y_blk, f"{prefix}.dSk_y.CSR")
+
+
+
     
     if(bool(args.Bloch) == True):
         print("\nWriting Bloch phase file ...")

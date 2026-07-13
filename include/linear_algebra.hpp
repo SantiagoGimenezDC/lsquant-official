@@ -22,6 +22,8 @@ void axpy(const int dim, std::complex<double> a, const std::complex<double> *x, 
 
 void axpy(const std::complex<double>& a, const std::vector< std::complex<double> >& x, std::vector< std::complex<double> >& y);
 
+void axpy( std::complex<double> a, const Eigen::Vector<std::complex<double>, -1>& x, Eigen::Vector<std::complex<double>, -1>& y);
+  
 void copy(const int dim, const std::complex<double> *x, std::complex<double> *y);
 
 void copy(const std::vector< std::complex<double> >&x,std::vector< std::complex<double> >& y);
@@ -41,6 +43,12 @@ void extract_segment( const std::vector< std::complex<double> >&x, size_t start_
 void introduce_segment( const std::vector< std::complex<double> >&x, std::vector< std::complex<double> >& y, size_t start_y );//size_y >> size_y
 
 void orthogonalize(SparseMatrixType &,  const std::vector< std::complex<double> >&,  std::vector< std::complex<double> >& );
+
+void orthogonalize(SparseMatrixType &,  const Eigen::Vector<std::complex<double>, -1>&,  Eigen::Vector<std::complex<double>, -1>& );
+
+
+  
+void orthogonalize(const size_t, Eigen::SparseMatrix<std::complex<double>,  Eigen::RowMajor, indexType>*,  const std::complex<double>*,  std::complex<double>* );
   
 } // namespace linalg
 
