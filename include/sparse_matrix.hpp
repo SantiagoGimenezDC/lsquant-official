@@ -318,15 +318,17 @@ public:
     void apply_B_FFT( value_t* out, const value_t* in);
     void apply_Bdagger_FFT( value_t* out, const value_t* in);
 
-    void set_S(Eigen::SparseMatrix<complex<double>, Eigen::RowMajor, indexType>* new_S)
-    {
-      Sk_ = new_S;
-    }
+    void set_S(Eigen::SparseMatrix<complex<double>, Eigen::RowMajor, indexType>* new_S){    Sk_ = new_S;    }
 
-    void set_Hk(Eigen::SparseMatrix<complex<double>, Eigen::RowMajor, indexType>* new_Hk)
-    {
-      Hk_ = new_Hk;
-    }
+    void set_Hk(Eigen::SparseMatrix<complex<double>, Eigen::RowMajor, indexType>* new_Hk){  Hk_ = new_Hk;   }
+    void set_dHk_1(Eigen::SparseMatrix<complex<double>, Eigen::RowMajor, indexType>* new_dHk_1){  dHk_1_ = new_dHk_1;   }
+    void set_dHk_2(Eigen::SparseMatrix<complex<double>, Eigen::RowMajor, indexType>* new_dHk_2){  dHk_2_ = new_dHk_2;   }
+    void set_dSk_1(Eigen::SparseMatrix<complex<double>, Eigen::RowMajor, indexType>* new_dSk_1){  dSk_1_ = new_dSk_1;   }
+    void set_dSk_2(Eigen::SparseMatrix<complex<double>, Eigen::RowMajor, indexType>* new_dSk_2){  dSk_2_ = new_dSk_2;   }
+
+
+
+  
 private:
   Eigen::SparseMatrix<complex<double>, Eigen::RowMajor, indexType>* Hk_, *Sk_, *dHk_1_, *dHk_2_, *dSk_1_, *dSk_2_;
 

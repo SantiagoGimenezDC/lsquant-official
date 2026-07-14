@@ -130,6 +130,11 @@ set(MAIN inline_compute-Kubo-kpm-FFT )
 add_executable(${MAIN} inline_compute-Kubo-kpm-FFT.cpp )
 target_link_libraries(${MAIN} ${KPM_LIB} )
 
+set(MAIN inline_compute-Kubo-kpm-FFT_kQuant_nonOrth )
+add_executable(${MAIN} inline_compute-Kubo-kpm-FFT_kQuant_nonOrth.cpp )
+target_link_libraries(${MAIN} ${KPM_LIB} )
+
+
 set(MAIN inline_opticalConductivityFromChebmom )
 add_executable(${MAIN} opticalConductivityFromChebmom.cpp  )
 target_link_libraries(${MAIN} ${KPM_LIB} )

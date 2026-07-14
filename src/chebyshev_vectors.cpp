@@ -524,3 +524,114 @@ double chebyshev::Vectors::MemoryConsumptionInGB()
 }
 	
 	
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+void chebyshev::Vectors_sliced_kQuant_nonOrth::SetInitVectors_2( SparseMatrixType &OP , const Moments::vector_t& T0 )
+{
+
+        const auto dim = this->SystemSize();
+	assert( OP.rank() == this->SystemSize() && T0.size() == this->SystemSize() );
+
+	if( this->Chebyshev0().size()!= dim )
+		this->Chebyshev0() = Moments::vector_t(dim,Moments::value_t(0)); 
+
+	if( this->Chebyshev1().size()!= dim )
+		this->Chebyshev1() = Moments::vector_t(dim,Moments::value_t(0)); 
+	//From now on this-> will be discarded in Chebyshev0() and Chebyshev1()
+
+
+	linalg::copy ( T0, this->Chebyshev1() );
+	OP.Multiply( 1.0, this->Chebyshev1(), 0.0, this->Chebyshev0() );
+	this->Hamiltonian().Multiply( 1.0, this->Chebyshev0(), 0.0, this->Chebyshev1() );
+
+	return ;
+};
+
+
+void chebyshev::Vectors_sliced_kQuant_nonOrth::SetInitVectors_2( const Moments::vector_t& T0 )
+{
+
+	assert( T0.size() == this->SystemSize() );
+	const auto dim = this->SystemSize();
+
+	if( this->Chebyshev0().size()!= dim )
+		this->Chebyshev0() = Moments::vector_t(dim,Moments::value_t(0)); 
+
+	if( this->Chebyshev1().size()!= dim )
+		this->Chebyshev1() = Moments::vector_t(dim,Moments::value_t(0)); 
+	//From now on this-> will be discarded in Chebyshev0() and Chebyshev1()
+
+	linalg::copy ( T0, this->Chebyshev0() );
+	this->Hamiltonian().Multiply( 1.0, this->Chebyshev0(), 0.0, this->Chebyshev1() );
+};
+
+
+
+
+int chebyshev::Vectors_sliced_kQuant_nonOrth::IterateAllSliced(int s )
+{
+
+  size_t segment_size = ( s == num_sections_-1 ? last_section_size_ : section_size_ ),
+         segment_start = s * section_size_,
+         DIM = this->SystemSize();
+
+  
+	//The vectorss Chebyshev0() and Chebyshev1() are assumed to have
+	// been initialized
+
+        linalg::extract_segment( Chebyshev0(),  segment_start, Vector(0));
+	//linalg::copy( this->Chebyshev0() ,this->Vector(0) );
+
+	for(int m=1; m < this->NumberOfVectors(); m++ )
+	{
+	  
+	  linalg::extract_segment( Chebyshev1(),  segment_start, Vector(m));
+	  this->Hamiltonian().Multiply(2.0,Chebyshev1(),-1.0,Chebyshev0());
+	  Chebyshev0().swap(Chebyshev1());
+	  	
+}
+	return 0;
+};
+
+
+int chebyshev::Vectors_sliced_kQuant_nonOrth::MultiplySliced(  int s)
+{
+  size_t segment_size = ( s == num_sections_-1 ? last_section_size_ : section_size_ ),
+    segment_start = s * section_size_,
+    DIM = this->SystemSize();
+
+  Moments::vector_t tmp1(this->SystemSize()), tmp2(this->SystemSize());
+
+
+#pragma omp parallel for
+	for(int i=0; i<this->SystemSize(); i++){//not parallelized; with omp/ eigen this is straightforward;
+	  tmp1[i] = 0.0;
+	  tmp2[i] = 0.0;
+	}
+
+	
+	for(int m=0; m < this->NumberOfVectors(); m++ )
+	{
+	  linalg::introduce_segment(Chebmu_.ListElem(m), tmp1, segment_start);
+	  this->Hamiltonian().vel_i_nonOrth(tmp1.data(),tmp2.data(), 2);
+	  //OP.Multiply(1.0,tmp1,0.0, tmp2); //Multiply(  OPV(), tmp2 );
+	  linalg::extract_segment(tmp2, segment_start,  Chebmu_.ListElem(m));	  
+	}
+
+	return 0;
+};

@@ -1118,6 +1118,11 @@ class Moments_kQuant
 
 
 
+
+
+
+
+
 class Moments1D_kQuant: public Moments_kQuant
 {
 	public: 
@@ -1318,6 +1323,169 @@ class Moments_kQuant_nonOrth
 	double band_width,band_center;
 	vector_t mu;	
 };
+
+
+class Vectors_sliced_kQuant_nonOrth : public Moments_kQuant_nonOrth
+{
+	public: 
+	typedef VectorList< Moments::value_t > vectorList_t;
+
+
+
+
+  //virtual void SetInitVectors( const vector_t& );
+
+  //virtual void SetInitVectors( SparseMatrixType & ,const vector_t&  );
+	virtual void SetInitVectors_2( const vector_t& );
+
+	virtual void SetInitVectors_2( SparseMatrixType & ,const vector_t&  );
+
+	  
+	int NumberOfVectors() const
+	{ return numVecs_;}
+
+	int NumberOfSections() const
+	{ return num_sections_;}
+  
+  
+        Moments::vector_t& OPV()
+        {return OPV_;};
+  
+  	int SectionSize() const
+	{ return section_size_;}
+
+        int LastSectionSize() const
+	{ return last_section_size_;}
+
+        vectorList_t& Chebmu(){return Chebmu_;};
+  
+  	void SetNumberOfVectors( const int x)
+	{
+	  numVecs_ = x;
+	}
+  
+	int SetNumSections( const int x)
+	{
+
+	    num_sections_ = x;
+	    section_size_ = SystemSize()/num_sections_; // All of this assuming */* is larger than *%*. Otherwise, i'd change num_sections until it is.
+	    last_section_size_ = SystemSize()/num_sections_ + SystemSize() % num_sections_;
+	  
+	    return 0;
+	}
+  
+        void SetChebmu(const int num_vecs, const size_t last_section_size)
+        {
+	     Chebmu_(num_vecs, last_section_size);
+        }
+
+
+
+	Vectors_sliced_kQuant_nonOrth()
+        {
+                SetChebmu(0,0);
+                SetNumSections(1);
+	};
+
+	~Vectors_sliced_kQuant_nonOrth(){};  
+
+        Vectors_sliced_kQuant_nonOrth( chebyshev::Vectors_sliced_kQuant_nonOrth& vec){ *this = vec; };
+  
+        Vectors_sliced_kQuant_nonOrth( const int numVecs, const size_t num_sections): numVecs_(numVecs), num_sections_(num_sections), section_size_(0), last_section_size_(0), Chebmu_(0,0) {};
+
+  
+  
+        int CreateVectorSet()
+        {
+		try
+		{
+
+		        this->SystemSize( this->Hamiltonian().rank() );
+			section_size_ = SystemSize()/num_sections_; // All of this assuming */* is larger than *%*. Otherwise, i'd change num_sections until it is.
+	                last_section_size_ = SystemSize()/num_sections_ + SystemSize() % num_sections_;
+
+		        const int vec_size  = last_section_size_;
+			const int list_size = this->NumberOfVectors();
+			Chebmu_.Resize(list_size, vec_size );
+		}
+		catch (...)
+		{ std::cerr<<"Failed to initilize the vector list."<<std::endl;}
+
+		
+		return 0;
+	}
+    
+    
+	void getMomentsParams( Moments_kQuant_nonOrth& mom)
+	{
+		this->SetHamiltonian( mom.Hamiltonian() ) ; 
+		this->SystemLabel( mom.SystemLabel());
+		this->BandWidth( mom.BandWidth() );
+		this->BandCenter( mom.BandCenter() );
+		if ( mom.Chebyshev0().size() == this->SystemSize() )
+			this->SetInitVectors( mom.Chebyshev0() );
+	}
+
+	inline
+	size_t Size() const
+	{
+		return  (long unsigned int)section_size_*
+				(long unsigned int)this->NumberOfVectors();
+	}
+
+	inline 
+	double SizeInGB() const
+	{
+		const double list_size = this->NumberOfVectors();
+		return  sizeof(value_t)*section_size_*list_size*pow(2.0,-30.0);
+	}
+
+	inline
+	size_t HighestMomentNumber() const { return  this->Chebmu_.ListSize(); };
+
+	inline
+	vectorList_t& List() { return this->Chebmu_; };
+
+	inline
+	Moments::vector_t& Vector(const size_t m0) { return this->Chebmu_.ListElem(m0); };
+
+	inline
+	Moments::value_t& operator()(const size_t m0) { return this->Chebmu_(m0,0); };
+
+        void operator=( Vectors_sliced_kQuant_nonOrth& vec)
+	{
+		this->SetHamiltonian( vec.Hamiltonian() ) ; 
+		this->SystemLabel( vec.SystemLabel());
+		this->BandWidth( vec.BandWidth() );
+		this->BandCenter( vec.BandCenter() );
+		if ( vec.Chebyshev0().size() == this->SystemSize() )
+			this->SetInitVectors( vec.Chebyshev0() );
+
+		num_sections_ = vec.NumberOfSections();
+		numVecs_ = vec.NumberOfVectors();
+		section_size_ = vec.SectionSize();
+	        last_section_size_ = vec.LastSectionSize();
+
+	}
+
+  
+	virtual int IterateAllSliced( int );
+
+        virtual int MultiplySliced(  int );
+
+	double MemoryConsumptionInGB();
+
+
+
+	private:
+	Moments::vector_t OPV_;
+        int numVecs_, num_sections_;
+        size_t section_size_, last_section_size_;
+        vectorList_t Chebmu_;	
+  };
+
+
+
 
 
 

@@ -403,7 +403,7 @@ void SparseMatrixType_kQuant_nonOrth::vel_i_nonOrth(const value_t * in, value_t 
   linalg::orthogonalize(size_t(numRows()), Sk_, tmp_2.data(), tmp_1.data());
 	  
 	  
-  linalg::axpy(numRows(), -1.0, tmp_1.data(), out);
+  //linalg::axpy(numRows(), -1.0, tmp_1.data(), out);
 
   
 
