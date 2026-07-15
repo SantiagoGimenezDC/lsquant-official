@@ -197,7 +197,7 @@ void linalg::orthogonalize(const size_t Dim, Eigen::SparseMatrix<std::complex<do
 
     
   Eigen::ConjugateGradient<  Eigen::SparseMatrix<std::complex<double>,  Eigen::RowMajor, indexType>, Eigen::Lower,  Eigen::DiagonalPreconditioner< std::complex<double>> > solver;
-  solver.setTolerance(0.0000001); 
+  solver.setTolerance(0.00001); 
   solver.setMaxIterations(1000); 
   solver.compute((*S));
   eig_orthogonalized = solver.solve(eig_original);

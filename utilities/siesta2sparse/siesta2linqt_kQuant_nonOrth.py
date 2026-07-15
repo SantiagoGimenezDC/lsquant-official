@@ -221,7 +221,7 @@ def orth_operators_k(H_source, k, gauge: str):
     #         - ½ ∂S S^{-1} H_orth
     def velocity(dH, dS):
         return (Sinv @ dH 
-                - Sinv @ dS @ Sinv @  H_orth)
+                - Sinv @ dS @ Sinv @ Hk)
 
     Vx = velocity(dHk_x, dSk_x)
     Vy = velocity(dHk_y, dSk_y)
