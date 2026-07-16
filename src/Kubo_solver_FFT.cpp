@@ -586,9 +586,7 @@ void Kubo_solver_FFT_kQuant::polynomial_recursion(const vector_t& PhiR, const ve
 	  time_station csrmv_time_kets;
 
 	  OP1.Multiply(1.0, PhiL, 0.0, tmp);
-	  
-	  
-	  chebVecL->SetInitVectors( tmp );
+	  chebVecL->SetInitVectors_2( tmp );
 	  chebVecL->IterateAllSliced(s);
 
 	  
@@ -600,7 +598,7 @@ void Kubo_solver_FFT_kQuant::polynomial_recursion(const vector_t& PhiR, const ve
 
 	  time_station csrmv_time_bras;  
 
-	  chebVecR->SetInitVectors(  PhiR );
+	  chebVecR->SetInitVectors_2(  PhiR );
 	  chebVecR->IterateAllSliced(s);
 	  chebVecR->MultiplySliced(OP2, s );
 		
@@ -613,7 +611,7 @@ void Kubo_solver_FFT_kQuant::polynomial_recursion(const vector_t& PhiR, const ve
 	  if( sym_formula_ == KUBO_GREENWOOD )
 	    Greenwood_FFTs(*chebVecL, *chebVecR, r_data, s);
 
-          if( sym_formula_ == KUBO_BASTIN )
+	  if( sym_formula_ == KUBO_BASTIN )
 	    Bastin_FFTs   (*chebVecL, *chebVecR, r_data, s);	
 
 	  FFTs_time.stop_add( &total_time_FFTs, "           FFT operations time:        ");

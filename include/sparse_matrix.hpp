@@ -207,8 +207,8 @@ public:
     // Computes:  y = a * (H_k + B† V B) * x + b * y
     // If disorder is empty, falls back to H_k only (pure k-space).
 
-    virtual void Multiply(const value_t a, const value_t * vec1, const value_t b, value_t * vec2) { this->Multiply_kQuant(a,  vec1,  b,  vec2); } ;
-    virtual  void Multiply(const value_t a, const vector_t& vec1, const value_t b, vector_t& vec2) { this->Multiply_kQuant(a,  vec1,  b,  vec2); } ;
+    virtual void Multiply(const value_t a, const value_t * vec1, const value_t b, value_t * vec2) override { this->Multiply_kQuant(a,  vec1,  b,  vec2); } ;
+    virtual void Multiply(const value_t a, const vector_t& vec1, const value_t b, vector_t& vec2) override { this->Multiply_kQuant(a,  vec1,  b,  vec2); } ;
 
     void Multiply_kQuant(const value_t , const value_t *, const value_t , value_t * ) ;
     void Multiply_kQuant(const value_t , const vector_t& , const value_t , vector_t& );

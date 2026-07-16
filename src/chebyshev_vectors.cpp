@@ -700,11 +700,10 @@ void chebyshev::Vectors_sliced_kQuant::SetInitVectors_2( const Moments::vector_t
 		this->Chebyshev1() = Moments::vector_t(dim,Moments::value_t(0)); 
 	//From now on this-> will be discarded in Chebyshev0() and Chebyshev1()
 
+
 	linalg::copy ( T0, this->Chebyshev0() );
-	this->Ham()->Multiply( 1.0, this->Chebyshev0(), 0.0, this->Chebyshev1() );
+	this->Ham()->Multiply_kQuant( 1.0, this->Chebyshev0(), 0.0, this->Chebyshev1() );
 };
-
-
 
 
 int chebyshev::Vectors_sliced_kQuant::IterateAllSliced(int s )

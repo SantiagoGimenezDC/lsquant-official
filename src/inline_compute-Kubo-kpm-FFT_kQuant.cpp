@@ -82,7 +82,7 @@ int main(int argc, char *argv[])
     }
 
     // ── Anderson disorder ─────────────────────────────────────────────────────
-    if (disorder_amplitude > 0.0)
+    if (disorder_amplitude >= 0.0)
     {
         std::cout << "\nGenerating Anderson disorder  W = "
                   << disorder_amplitude << " eV ..." << std::endl;
@@ -115,6 +115,16 @@ int main(int argc, char *argv[])
     const double half_width  = (spectral_bounds[1] - spectral_bounds[0]) * 1.0;
     const double band_center = (spectral_bounds[1] + spectral_bounds[0]) * 0.5;
 
+    
+    // Rescale disorder to adimensionalised units now that BandWidth is known.
+    // H_bar = (H - b)/a  →  V_bar = V/a  →  disorder entries must be /a too.
+    if (disorder_amplitude > 0.0 && !HAM.disorder.empty())
+    {
+        const double a = half_width;
+        std::cout << "Rescaling disorder by 1/a = " << 1.0/a << std::endl;
+        for (auto& v : HAM.disorder)
+	  v /= a;  ///= a;
+    }
    
 	//CONFIGURE THE CHEBYSHEV MOMENTS
 	chebVec.SystemLabel(LABEL);

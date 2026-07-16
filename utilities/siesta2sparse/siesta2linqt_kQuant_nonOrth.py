@@ -460,6 +460,104 @@ def write_bloch_phases(H_source, Ks: np.ndarray,
 
 
 
+# ─────────────────────────────────────────────────────────────────────────────
+# Bloch transform matrix  B  (atom gauge)
+# ─────────────────────────────────────────────────────────────────────────────
+
+def build_bloch_transform(H_source, Ks: np.ndarray,
+                          kx: int, ky: int, kz: int) -> csr_matrix:
+    """
+    Build the Bloch transform matrix that maps the k-space block-diagonal
+    basis to the real-space supercell basis (atom gauge).
+
+    Matrix elements:
+        B_{(ik,α), (iR,β)} = δ_{αβ} / √N_k × exp(i k_ik · (R_iR + τ_α))
+
+    where:
+        k_ik   – Cartesian k-vector of grid point ik  (1/Å, includes 2π)
+        R_iR   – Cartesian position of unit cell iR within the supercell (Å)
+        τ_α    – Cartesian position of the atom hosting orbital α (Å)
+
+    The δ_{αβ} means the matrix is orbital-diagonal: only same-orbital
+    entries are nonzero, so each row has exactly N_k non-zero elements.
+
+    Parameters
+    ----------
+    H_source : sisl.Hamiltonian
+    Ks       : (N_k, 3) array of fractional k-coordinates (from build_operators)
+    kx,ky,kz : k-grid dimensions
+
+    Returns
+    -------
+    B : (N_k*W, N_k*W) unitary sparse CSR matrix
+    """
+    rcell = H_source.geometry.rcell  # (3,3) reciprocal lattice, rows, with 2π factor
+    cell  = H_source.geometry.cell   # (3,3) real-space lattice, rows (Å)
+    W     = H_source.no              # orbitals per unit cell
+    Nk    = len(Ks)
+    N     = Nk * W
+
+    # Map every orbital to the Cartesian position of its host atom
+    # H_source.geometry.a2o(ia, all=True) gives orbital indices for atom ia
+    xyz     = H_source.geometry.xyz          # (natoms, 3) in Å
+    tau_orb = np.zeros((W, 3), dtype=float)
+    for ia in range(H_source.na):
+        orbs = H_source.geometry.a2o(ia, all=True)
+        tau_orb[orbs] = xyz[ia]
+
+    # Cartesian k-vectors:  k_cart[ik] = Ks[ik] @ rcell  (1/Å, with 2π)
+    k_carts = Ks @ rcell                     # (Nk, 3)
+
+    # Real-space positions of supercell unit cells
+    # Ks stores fractional coords [n1/kx, n2/ky, n3/kz] → integer grid indices
+    n_grid = np.round(Ks * np.array([kx, ky, kz])).astype(int)  # (Nk, 3)
+    R_vecs = n_grid @ cell                   # (Nk, 3) in Å
+
+    # Lattice part of the phase: phase_lat[ik, iR] = k_ik · R_iR
+    phase_lat = k_carts @ R_vecs.T           # (Nk, Nk)
+
+    inv_sqrt_Nk = 1.0 / np.sqrt(Nk)
+
+    # Build in COO format.  For each orbital α, the subblock is a dense Nk×Nk
+    # matrix placed at row-stride W (rows ik*W+α) and col-stride W (cols iR*W+α).
+    nnz      = Nk * Nk * W
+    row_arr  = np.empty(nnz, dtype=np.int64)
+    col_arr  = np.empty(nnz, dtype=np.int64)
+    data_arr = np.empty(nnz, dtype=np.complex128)
+
+    ik_idx = np.arange(Nk, dtype=np.int64)
+    iR_idx = np.arange(Nk, dtype=np.int64)
+
+
+    for alpha in range(W):
+        phase_atom  = k_carts @ tau_orb[alpha]
+        phase_total = phase_lat + phase_atom[:, np.newaxis]
+        B_alpha     = inv_sqrt_Nk * np.exp(1j * phase_total)   # (Nk, Nk)
+
+        # Explicit (Nk, Nk) index arrays via meshgrid
+        rows_2d, cols_2d = np.meshgrid(
+            ik_idx * W + alpha,   # row indices: ik*W + alpha
+            iR_idx * W + alpha,   # col indices: iR*W + alpha
+            indexing='ij'         # rows_2d[ik, iR], cols_2d[ik, iR]
+        )
+
+        sl = slice(alpha * Nk * Nk, (alpha + 1) * Nk * Nk)
+        row_arr [sl] = rows_2d.ravel()
+        col_arr [sl] = cols_2d.ravel()
+        data_arr[sl] = B_alpha.ravel()
+        
+
+    B = coo_matrix((data_arr, (row_arr, col_arr)), shape=(N, N)).tocsr()
+
+    # Sanity check: B should be unitary  →  max|B†B - I| should be ~1e-12
+    err = abs((B.conj().T @ B) - np.eye(N)).max()
+    print(f"  Unitarity check  max|B†B - I| = {err:.2e}")
+
+    return B
+
+
+
+
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Entry point
@@ -552,6 +650,42 @@ def main():
         write_bloch_phases(H_src, Ks, args.kx, args.ky, args.kz,
                            f"{prefix}.BLOCH_PHASES")
      
+    real_test = True
+    if( real_test ):
+        # ── Build Bloch transform matrix ──────────────────────────────────────────
+        print("\nBuilding Bloch transform matrix (atom gauge) ...")
+        B = build_bloch_transform(H_src, Ks, args.kx, args.ky, args.kz)
+
+        # ── Write test outputs ─────────────────────────────────────────────────────────
+        Hr_blk  = prune_and_sort(B.conj().T @ H_blk  @ B)
+        Vxr_blk = prune_and_sort(B.conj().T @ Vx_blk @ B)
+        Vyr_blk = prune_and_sort(B.conj().T @ Vy_blk @ B)
+        
+        
+        
+        # ── Disorder! ──────────────────────────────────────────
+        # Anderson disorder strength (eV)
+        W = 1.0
+
+        # Number of orbitals
+        N = Hr_blk.shape[0]
+
+        # Uniform random onsite energies in [-W/2, W/2]
+        onsite = np.random.uniform(-W/2, W/2, size=N)
+        #onsite = np.full(N, -1.0)
+
+	
+        np.savetxt("onsite.txt", onsite, fmt="%.16e")
+    	
+        # Add disorder to the Hamiltonian
+        from scipy.sparse import diags
+        Hr_blk = Hr_blk + diags(onsite, format="csr")
+	
+	
+        print("\nWriting CSR files ...")
+        write_linqt_csr(Hr_blk,  f"{prefix}_r.HAM.CSR")
+        write_linqt_csr(Vxr_blk, f"{prefix}_r.VX.CSR")
+        write_linqt_csr(Vyr_blk, f"{prefix}_r.VY.CSR")
      
      
     
