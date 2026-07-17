@@ -32,10 +32,10 @@ int main(int argc, char *argv[])
 	//and apply the appropiated kernel
 	mu.ApplyJacksonKernel(broadening,broadening);
 
-	const int num_div = 30*mu.HighestMomentNumber();
+	const int num_div = 4*mu.HighestMomentNumber();
 	
 	const double
-	xbound = chebyshev::CUTOFF;
+	  xbound = chebyshev::CUTOFF;
 		
 	std::vector< double >  energies(num_div,0);
 	for( int i=0; i < num_div; i++)
@@ -62,7 +62,7 @@ int main(int argc, char *argv[])
 
 	std::vector<double> kernel(num_div,0.0);
 	#pragma omp parallel for
-	for( int i=0; i < num_div; i++)
+	for( int i=1; i < num_div-1; i++)
 	{
 		const double energ = energies[i];
 		for( int m0 = 0 ; m0 < mu.HighestMomentNumber(0) ; m0++)
@@ -72,7 +72,7 @@ int main(int argc, char *argv[])
 	}
 
 	double acc = 0;
-	for( int i=0; i < num_div-1; i++)
+	for( int i=1; i < num_div-2; i++)
 	{
 		const double energ  = energies[i];
 		const double denerg = energies[i+1]-energies[i];

@@ -650,7 +650,7 @@ def main():
         write_bloch_phases(H_src, Ks, args.kx, args.ky, args.kz,
                            f"{prefix}.BLOCH_PHASES")
      
-    real_test = True
+    real_test = False
     if( real_test ):
         # ── Build Bloch transform matrix ──────────────────────────────────────────
         print("\nBuilding Bloch transform matrix (atom gauge) ...")
