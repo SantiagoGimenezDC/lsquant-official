@@ -22,6 +22,7 @@ set(KPM_LIB_SOURCES
  "Device/Graphene_KaneMele.cpp"
  "sparse_matrix_kquant.cpp"
  "sparse_matrix_kquant_nonOrth.cpp"
+ "sparse_matrix_kquant_nonOrth_ChrisVel.cpp"
  
  
  "chebyshev_solver_Device.cpp"
@@ -136,6 +137,10 @@ target_link_libraries(${MAIN} ${KPM_LIB} )
 
 set(MAIN inline_compute-Kubo-kpm-FFT_kQuant )
 add_executable(${MAIN} inline_compute-Kubo-kpm-FFT_kQuant.cpp )
+target_link_libraries(${MAIN} ${KPM_LIB} )
+
+set(MAIN inline_compute-Kubo-kpm-FFT_kQuant_nonOrth_ChrisVel )
+add_executable(${MAIN} inline_compute-Kubo-kpm-FFT_kQuant_nonOrth_ChrisVel.cpp )
 target_link_libraries(${MAIN} ${KPM_LIB} )
 
 

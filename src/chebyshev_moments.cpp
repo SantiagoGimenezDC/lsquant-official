@@ -59,6 +59,24 @@ void chebyshev::Moments_kQuant_nonOrth::SetInitVectors( SparseMatrixType_kQuant_
 	return ;
 };
 
+void chebyshev::Moments_kQuant_nonOrth_ChrisVel::SetInitVectors( SparseMatrixType_kQuant_nonOrth_ChrisVel &OP ,const Moments_kQuant::vector_t& T0 )
+{
+	const auto dim = this->SystemSize();
+	assert( OP.rank() == this->SystemSize() && T0.size() == this->SystemSize() );
+
+	if( this->Chebyshev0().size()!= dim )
+		this->Chebyshev0() = Moments_kQuant::vector_t(dim,Moments_kQuant::value_t(0)); 
+
+	if( this->Chebyshev1().size()!= dim )
+		this->Chebyshev1() = Moments_kQuant::vector_t(dim,Moments_kQuant::value_t(0)); 
+	//From now on this-> will be discarded in Chebyshev0() and Chebyshev1()
+
+	linalg::copy ( T0, this->Chebyshev1() );
+	OP.Multiply( 1.0, this->Chebyshev1(), 0.0, this->Chebyshev0() );
+	this->Hamiltonian().Multiply( 1.0, this->Chebyshev0(), 0.0, this->Chebyshev1() );
+
+	return ;
+};
 
 
 void chebyshev::Moments::SetInitVectors( const Moments::vector_t& T0 )
@@ -112,6 +130,23 @@ void chebyshev::Moments_kQuant_nonOrth::SetInitVectors( const Moments_kQuant_non
 
 };
 
+
+void chebyshev::Moments_kQuant_nonOrth_ChrisVel::SetInitVectors( const Moments_kQuant_nonOrth_ChrisVel::vector_t& T0 )
+{
+	assert( T0.size() == this->SystemSize() );
+	const auto dim = this->SystemSize();
+
+	if( this->Chebyshev0().size()!= dim )
+		this->Chebyshev0() = Moments_kQuant::vector_t(dim,Moments_kQuant::value_t(0)); 
+
+	if( this->Chebyshev1().size()!= dim )
+		this->Chebyshev1() = Moments_kQuant::vector_t(dim,Moments_kQuant::value_t(0)); 
+	//From now on this-> will be discarded in Chebyshev0() and Chebyshev1()
+
+	linalg::copy ( T0, this->Chebyshev0() );
+	this->Hamiltonian().Multiply( 1.0, this->Chebyshev0(), 0.0, this->Chebyshev1() );
+
+};
 
 
 

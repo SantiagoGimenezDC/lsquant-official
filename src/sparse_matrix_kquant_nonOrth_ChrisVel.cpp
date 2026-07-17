@@ -20,7 +20,7 @@
 //   cdouble block : phi_y[ky*ky]
 //   cdouble block : phi_z[kz*kz]
 // ─────────────────────────────────────────────────────────────────────────────
-bool SparseMatrixType_kQuant_nonOrth::ReadPhasesFromFile(const std::string& filename)
+bool SparseMatrixType_kQuant_nonOrth_ChrisVel::ReadPhasesFromFile(const std::string& filename)
 {
     std::cout << "\nReading Bloch phase file: " << filename << std::endl;
 
@@ -115,7 +115,7 @@ for (int ik = 0; ik < Nk; ++ik) {
 // the iR summation accesses in[] with stride W — kept in cache by the
 // compiler's prefetcher.  OpenMP parallelises over ik.
 // ─────────────────────────────────────────────────────────────────────────────
-void SparseMatrixType_kQuant_nonOrth::apply_B(value_t* out, const value_t* in) const
+void SparseMatrixType_kQuant_nonOrth_ChrisVel::apply_B(value_t* out, const value_t* in) const
 {
     const int N = Nk * W;
     std::fill(out, out + N, value_t(0.0, 0.0));
@@ -155,7 +155,7 @@ void SparseMatrixType_kQuant::apply_B_FFT( value_t* out, const value_t* in)
     for (int i = 0; i < N; ++i)
         out[i] += scale * atom_phases[i] * fft_buf[i];
 	}*/
-void SparseMatrixType_kQuant_nonOrth::apply_B_FFT(value_t* out, const value_t* in)
+void SparseMatrixType_kQuant_nonOrth_ChrisVel::apply_B_FFT(value_t* out, const value_t* in)
 {
     const int N = Nk * W;
     for (int i = 0; i < N; ++i)
@@ -176,7 +176,7 @@ void SparseMatrixType_kQuant_nonOrth::apply_B_FFT(value_t* out, const value_t* i
 //                        × conj(atom_phase[ik][α])
 //                        × in[ik·W + α]
 // ─────────────────────────────────────────────────────────────────────────────
-void SparseMatrixType_kQuant_nonOrth::apply_Bdagger(value_t* out, const value_t* in) const
+void SparseMatrixType_kQuant_nonOrth_ChrisVel::apply_Bdagger(value_t* out, const value_t* in) const
 {
     const int N = Nk * W;
     std::fill(out, out + N, value_t(0.0, 0.0));
@@ -195,7 +195,7 @@ void SparseMatrixType_kQuant_nonOrth::apply_Bdagger(value_t* out, const value_t*
     }
 }
 
-void SparseMatrixType_kQuant_nonOrth::apply_Bdagger_FFT(value_t* out, const value_t* in)
+void SparseMatrixType_kQuant_nonOrth_ChrisVel::apply_Bdagger_FFT(value_t* out, const value_t* in)
 {
     const int N = Nk * W;
 
@@ -243,7 +243,7 @@ void SparseMatrixType_kQuant::apply_Bdagger_FFT( value_t* out, const value_t* in
 // B†  uses FFTW_FORWARD  (exp(-i·2π·k·n/N)):  k-space → real-space
 // B   uses FFTW_BACKWARD (exp(+i·2π·k·n/N)):  real-space → k-space
 // ─────────────────────────────────────────────────────────────────────────────
-void SparseMatrixType_kQuant_nonOrth::PrepareFFT()
+void SparseMatrixType_kQuant_nonOrth_ChrisVel::PrepareFFT()
 {
     const int N = Nk * W;
     // Allocate FFTW-aligned buffer so SIMD paths are used
@@ -281,7 +281,7 @@ void SparseMatrixType_kQuant_nonOrth::PrepareFFT()
 // [-amplitude/2, +amplitude/2].  The same random draw is used for all W
 // orbitals within a given unit cell (standard on-site Anderson model).
 // ─────────────────────────────────────────────────────────────────────────────
-void SparseMatrixType_kQuant_nonOrth::GenerateAndersonDisorder(double amplitude,
+void SparseMatrixType_kQuant_nonOrth_ChrisVel::GenerateAndersonDisorder(double amplitude,
                                                         unsigned int seed)
 {
     disorder.resize(Nk * W);
@@ -304,18 +304,18 @@ void SparseMatrixType_kQuant_nonOrth::GenerateAndersonDisorder(double amplitude,
 
 
 
-void SparseMatrixType_kQuant_nonOrth::Multiply_kQuant(const value_t  a,
+void SparseMatrixType_kQuant_nonOrth_ChrisVel::Multiply_kQuant(const value_t  a,
                                         const vector_t& x,
                                               value_t   b,
                                               vector_t& y)
 {
-    SparseMatrixType_kQuant_nonOrth::Multiply_kQuant(a, x.data(), b, y.data());
+    SparseMatrixType_kQuant_nonOrth_ChrisVel::Multiply_kQuant(a, x.data(), b, y.data());
 }
 
 
 
 
-void SparseMatrixType_kQuant_nonOrth::Multiply_kQuant(const value_t  a,
+void SparseMatrixType_kQuant_nonOrth_ChrisVel::Multiply_kQuant(const value_t  a,
                                                const value_t* x,
                                                      value_t  b,
                                                      value_t* y)
@@ -354,7 +354,7 @@ void SparseMatrixType_kQuant_nonOrth::Multiply_kQuant(const value_t  a,
 
 
 
-void SparseMatrixType_kQuant_nonOrth::Hk_clean_nonOrth(const value_t * in, value_t * out) {
+void SparseMatrixType_kQuant_nonOrth_ChrisVel::Hk_clean_nonOrth(const value_t * in, value_t * out) {
 
    Eigen::Map<const Eigen::Vector<std::complex<double>, -1>> eig_x(in, numRows());
    Eigen::Vector<std::complex<double>, -1> tmp(numRows());
@@ -366,7 +366,7 @@ void SparseMatrixType_kQuant_nonOrth::Hk_clean_nonOrth(const value_t * in, value
 	
 };
 
-void SparseMatrixType_kQuant_nonOrth::vel_i_nonOrth(const value_t * in, value_t * out, int dir) {
+void SparseMatrixType_kQuant_nonOrth_ChrisVel::vel_i_nonOrth(const value_t * in, value_t * out, int dir) {
 
   Eigen::Map<const Eigen::Vector<std::complex<double>, -1>> eig_x(in, numRows());
   //Eigen::Map< Eigen::Vector<std::complex<double>, -1>>  out_eig(out, numRows());
@@ -387,31 +387,48 @@ void SparseMatrixType_kQuant_nonOrth::vel_i_nonOrth(const value_t * in, value_t 
     
 
 
-  tmp_2 =  (*Hk_) * eig_x;  
+
+
+  
+  
+
+  if( dir == 1 )
+    tmp_2 = std::complex<double>(0,1.0) * (*A_1_) * eig_x;
+  else if( dir == 2 )
+    tmp_2 = std::complex<double>(0,1.0) * (*A_2_) * eig_x;
 
   tmp_2 /= a; //Why?? Is it because the velocity is not adimensionalized? so this is supposed to return de dimension to HK
 
+  
+  linalg::orthogonalize(size_t(numRows()), Sk_, tmp_2.data(), tmp_1.data());
+
+  tmp_2 = ( *Hk_ ) * tmp_1;
+  
+  linalg::orthogonalize(size_t(numRows()), Sk_, tmp_2.data(), tmp_1.data());  
+	  
+  linalg::axpy(numRows(), 1.0, tmp_1.data(), out);
+
+  
 
 
   
-  linalg::orthogonalize( size_t(numRows()), Sk_, tmp_2.data(), tmp_1.data());
+
+
+  tmp_2 = ( *Hk_ ) * eig_x;
+
+  tmp_2 /= a; //Why?? Is it because the velocity is not adimensionalized? so this is supposed to return de dimension to HK
+
+  
+  linalg::orthogonalize(size_t(numRows()), Sk_, tmp_2.data(), tmp_1.data());
 
   if( dir == 1 )
-    tmp_2 = (*dSk_1_) * tmp_1;//->Multiply(1.0,tmp_1,0.0, tmp_2); //Multiply(  OPV(), tmp2 );	  
+    tmp_2 = std::complex<double>(0,-1.0) * (*A_1d_) * tmp_1;
   else if( dir == 2 )
-    tmp_2 = (*dSk_2_) * tmp_1; //dSk_2_->Multiply(1.0,tmp_1,0.0, tmp_2); //Multiply(  OPV(), tmp2 );	  
+    tmp_2 = std::complex<double>(0,-1.0) * (*A_2d_) * tmp_1;
 
-
-  //std::complex<double>* tmp_2_data = tmp_2.data();
-  //std::complex<double>* tmp_1_data = tmp_1.data();
     
-  linalg::orthogonalize(size_t(numRows()), Sk_, tmp_2.data(), tmp_1.data());
+  linalg::orthogonalize(size_t(numRows()), Sk_, tmp_2.data(), tmp_1.data());  
 	  
-	  
-  linalg::axpy(numRows(), -1.0, tmp_1.data(), out);
-
-  
-
-
+  linalg::axpy(numRows(), 1.0, tmp_1.data(), out);
   
 };

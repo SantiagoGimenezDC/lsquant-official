@@ -1691,8 +1691,337 @@ class Moments1D_kQuant_nonOrth: public Moments_kQuant_nonOrth
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+class Moments_kQuant_nonOrth_ChrisVel
+{
+	public:
+	typedef std::complex<double>  value_t;
+	typedef std::vector< value_t > vector_t;
+
+	//default constructor
+	Moments_kQuant_nonOrth_ChrisVel():
+	_pNHAM(0),system_label(""),system_size(0),
+	band_width(0),band_center(0){};
+
+	//GETTERS
+	void getMomentsParams( Moments_kQuant_nonOrth_ChrisVel& mom)
+	{
+		this->SetHamiltonian( mom.Hamiltonian() ) ; 
+		this->SystemLabel( mom.SystemLabel());
+		this->BandWidth( mom.BandWidth() );
+		this->BandCenter( mom.BandCenter() );
+	};	
+	
+	inline
+	size_t SystemSize() const { return system_size; };
+
+	inline
+	string SystemLabel() const { return system_label; };
+
+	inline
+	double BandWidth() const { return band_width; };
+
+	inline
+	double HalfWidth() const { return BandWidth()/2.0; };
+
+	inline
+	double BandCenter() const { return band_center; };
+
+	inline
+	double ScaleFactor() const { return chebyshev::CUTOFF/HalfWidth(); };
+
+	inline
+	double ShiftFactor() const { return -BandCenter()/HalfWidth()*chebyshev::CUTOFF; };
+
+	inline 
+	vector_t& MomentVector() { return mu ;}
+
+	inline
+	value_t& MomentVector(const size_t i){return  mu[i]; };
+
+	inline
+	Moments::vector_t& Chebyshev0(){ return ChebV0; } 
+
+	inline
+	Moments::vector_t& Chebyshev1(){ return ChebV1; } 
+
+	inline
+	SparseMatrixType_kQuant_nonOrth_ChrisVel& Hamiltonian()
+	{ 
+		return *_pNHAM; 
+	};
+
+	inline
+	SparseMatrixType_kQuant_nonOrth_ChrisVel* Ham()
+	{ 
+		return _pNHAM; 
+	};
+
+
+	//SETTERS
+	inline
+	void SetHamiltonian( SparseMatrixType_kQuant_nonOrth_ChrisVel& NHAM )
+	{ 
+		if ( this->SystemSize() == 0 ) //Use the rank of the hamiltonian as system size
+			this->SystemSize( NHAM.rank() );	
+		assert( NHAM.rank() == this->SystemSize()  );
+		_pNHAM = &NHAM; 
+	};
+
+	inline
+	void SetHamiltonian( SparseMatrixType_kQuant_nonOrth_ChrisVel* NHAM )
+	{ 
+		if ( this->SystemSize() == 0 ) //Use the rank of the hamiltonian as system size
+			this->SystemSize( NHAM->rank() );	
+		assert( NHAM->rank() == this->SystemSize()  );
+		_pNHAM = NHAM; 
+	};
+
+
+	//Heavy functions
+	int  Rescale2ChebyshevDomain()
+	{
+		this->Hamiltonian().Rescale(this->ScaleFactor(),this->ShiftFactor());
+		return 0;
+	};
+
+
+	inline
+	void SetAndRescaleHamiltonian(SparseMatrixType_kQuant_nonOrth_ChrisVel& NHAM)
+	{ 
+		this->SetHamiltonian(NHAM );
+		this->Rescale2ChebyshevDomain();
+	};
+
+
+	inline
+	void SetAndRescaleHamiltonian(SparseMatrixType_kQuant_nonOrth_ChrisVel* NHAM)
+	{ 
+		this->SetHamiltonian(NHAM );
+		this->Rescale2ChebyshevDomain();
+	};
+  
+	inline
+	void SystemSize(const int dim)  { system_size = dim; };
+
+	inline
+	void SystemLabel(string label)  { system_label = label; };
+
+	inline
+	void BandWidth( const double x)  { band_width = x; };
+
+	inline
+	void BandCenter(const double x) { band_center = x; };
+
+	inline 
+	void MomentVector(const vector_t _mu ) { mu= _mu;}
+
+	virtual void SetInitVectors( const vector_t& );
+
+	virtual void SetInitVectors( SparseMatrixType_kQuant_nonOrth_ChrisVel & ,const vector_t&  );
+
+
+	inline
+	double Rescale2ChebyshevDomain(const double energ)
+	{ 
+		return (energ - this->BandCenter() )/this->HalfWidth(); 
+	};
+
+	int Iterate( );
+
+	//light functions
+    int JacksonKernelMomCutOff( const double broad );
+	
+	//light functions
+    double JacksonKernel(const double m,  const double Mom );
+
+
+	private:
+	SparseMatrixType_kQuant_nonOrth_ChrisVel* _pNHAM;
+
+	Moments::vector_t ChebV0,ChebV1,OPV;
+	std::string system_label;
+	size_t system_size;
+	double band_width,band_center;
+	vector_t mu;	
+};
+
+
+class Vectors_sliced_kQuant_nonOrth_ChrisVel : public Moments_kQuant_nonOrth_ChrisVel
+{
+	public: 
+	typedef VectorList< Moments::value_t > vectorList_t;
+
+
+
+
+  //virtual void SetInitVectors( const vector_t& );
+
+  //virtual void SetInitVectors( SparseMatrixType & ,const vector_t&  );
+	virtual void SetInitVectors_2( const vector_t& );
+
+	virtual void SetInitVectors_2( SparseMatrixType & ,const vector_t&  );
+
+	  
+	int NumberOfVectors() const
+	{ return numVecs_;}
+
+	int NumberOfSections() const
+	{ return num_sections_;}
+  
+  
+        Moments::vector_t& OPV()
+        {return OPV_;};
+  
+  	int SectionSize() const
+	{ return section_size_;}
+
+        int LastSectionSize() const
+	{ return last_section_size_;}
+
+        vectorList_t& Chebmu(){return Chebmu_;};
+  
+  	void SetNumberOfVectors( const int x)
+	{
+	  numVecs_ = x;
+	}
+  
+	int SetNumSections( const int x)
+	{
+
+	    num_sections_ = x;
+	    section_size_ = SystemSize()/num_sections_; // All of this assuming */* is larger than *%*. Otherwise, i'd change num_sections until it is.
+	    last_section_size_ = SystemSize()/num_sections_ + SystemSize() % num_sections_;
+	  
+	    return 0;
+	}
+  
+        void SetChebmu(const int num_vecs, const size_t last_section_size)
+        {
+	     Chebmu_(num_vecs, last_section_size);
+        }
+
+
+
+	Vectors_sliced_kQuant_nonOrth_ChrisVel()
+        {
+                SetChebmu(0,0);
+                SetNumSections(1);
+	};
+
+	~Vectors_sliced_kQuant_nonOrth_ChrisVel(){};  
+
+        Vectors_sliced_kQuant_nonOrth_ChrisVel( chebyshev::Vectors_sliced_kQuant_nonOrth_ChrisVel& vec){ *this = vec; };
+  
+        Vectors_sliced_kQuant_nonOrth_ChrisVel( const int numVecs, const size_t num_sections): numVecs_(numVecs), num_sections_(num_sections), section_size_(0), last_section_size_(0), Chebmu_(0,0) {};
+
+  
+  
+        int CreateVectorSet()
+        {
+		try
+		{
+
+		        this->SystemSize( this->Hamiltonian().rank() );
+			section_size_ = SystemSize()/num_sections_; // All of this assuming */* is larger than *%*. Otherwise, i'd change num_sections until it is.
+	                last_section_size_ = SystemSize()/num_sections_ + SystemSize() % num_sections_;
+
+		        const int vec_size  = last_section_size_;
+			const int list_size = this->NumberOfVectors();
+			Chebmu_.Resize(list_size, vec_size );
+		}
+		catch (...)
+		{ std::cerr<<"Failed to initilize the vector list."<<std::endl;}
+
+		
+		return 0;
+	}
+    
+    
+	void getMomentsParams( Moments_kQuant_nonOrth_ChrisVel& mom)
+	{
+		this->SetHamiltonian( mom.Hamiltonian() ) ; 
+		this->SystemLabel( mom.SystemLabel());
+		this->BandWidth( mom.BandWidth() );
+		this->BandCenter( mom.BandCenter() );
+		if ( mom.Chebyshev0().size() == this->SystemSize() )
+			this->SetInitVectors( mom.Chebyshev0() );
+	}
+
+	inline
+	size_t Size() const
+	{
+		return  (long unsigned int)section_size_*
+				(long unsigned int)this->NumberOfVectors();
+	}
+
+	inline 
+	double SizeInGB() const
+	{
+		const double list_size = this->NumberOfVectors();
+		return  sizeof(value_t)*section_size_*list_size*pow(2.0,-30.0);
+	}
+
+	inline
+	size_t HighestMomentNumber() const { return  this->Chebmu_.ListSize(); };
+
+	inline
+	vectorList_t& List() { return this->Chebmu_; };
+
+	inline
+	Moments::vector_t& Vector(const size_t m0) { return this->Chebmu_.ListElem(m0); };
+
+	inline
+	Moments::value_t& operator()(const size_t m0) { return this->Chebmu_(m0,0); };
+
+        void operator=( Vectors_sliced_kQuant_nonOrth_ChrisVel& vec)
+	{
+		this->SetHamiltonian( vec.Hamiltonian() ) ; 
+		this->SystemLabel( vec.SystemLabel());
+		this->BandWidth( vec.BandWidth() );
+		this->BandCenter( vec.BandCenter() );
+		if ( vec.Chebyshev0().size() == this->SystemSize() )
+			this->SetInitVectors( vec.Chebyshev0() );
+
+		num_sections_ = vec.NumberOfSections();
+		numVecs_ = vec.NumberOfVectors();
+		section_size_ = vec.SectionSize();
+	        last_section_size_ = vec.LastSectionSize();
+
+	}
+
+  
+	virtual int IterateAllSliced( int );
+
+        virtual int MultiplySliced(  int );
+
+	double MemoryConsumptionInGB();
+
+
+
+	private:
+	Moments::vector_t OPV_;
+        int numVecs_, num_sections_;
+        size_t section_size_, last_section_size_;
+        vectorList_t Chebmu_;	
+  };
+
+
 };
 
 #endif 
+
 
 

@@ -49,11 +49,11 @@ int main(int argc, char *argv[])
 	//chebyshev::Moments Hamiltonian_dummyMoms; //load number of moments
 
 
-	SparseMatrixType_kQuant_nonOrth HAM;
-        SparseMatrixType                OP_S, OP_dHk_1, OP_dHk_2, OP_dSk_1, OP_dSk_2;
+	SparseMatrixType_kQuant_nonOrth_ChrisVel HAM;
+        SparseMatrixType                OP_S, OP_dHk_1, OP_dHk_2, OP_Ak_1, OP_Ak_2;
 
     
-	chebyshev::Vectors_sliced_kQuant_nonOrth 
+	chebyshev::Vectors_sliced_kQuant_nonOrth_ChrisVel 
 	  chebVec( numMoms, num_sections ),
 	  chebVec_2( numMoms, num_sections );
                 
@@ -116,14 +116,14 @@ int main(int argc, char *argv[])
     }
     
     {
-        std::string input = "operators/" + LABEL + ".dSk_x.CSR";
-        builder.setSparseMatrix(&OP_dSk_1);
+        std::string input = "operators/" + LABEL + ".Ak_x.CSR";
+        builder.setSparseMatrix(&OP_Ak_1);
         builder.BuildOPFromCSRFile(input);
     }
     
     {
-        std::string input = "operators/" + LABEL + ".dSk_x.CSR";
-        builder.setSparseMatrix(&OP_dSk_2);
+        std::string input = "operators/" + LABEL + ".Ak_x.CSR";
+        builder.setSparseMatrix(&OP_Ak_2);
         builder.BuildOPFromCSRFile(input);
     }
 
@@ -135,8 +135,8 @@ int main(int argc, char *argv[])
      HAM.set_S(OP_S.Matrix());
      HAM.set_dHk_1(OP_dHk_1.Matrix());
      HAM.set_dHk_2(OP_dHk_2.Matrix());
-     HAM.set_dSk_1(OP_dSk_1.Matrix());
-     HAM.set_dSk_2(OP_dSk_2.Matrix());
+     HAM.set_A_1(OP_Ak_1.Matrix());
+     HAM.set_A_2(OP_Ak_2.Matrix());
 
      
     // ── Configure Chebyshev moments ───────────────────────────────────────────
@@ -180,7 +180,7 @@ int main(int argc, char *argv[])
 
 	std::string outputfilename="Bastin_FFT_V1-V2"+LABEL+"KPM_M"+S_NUM_MOM+"x"+S_NUM_MOM+"_state"+gen.StateLabel()+".conductivity";
 
-	chebyshev::Kubo_solver_FFT_kQuant_nonOrth solver(R, numMoms,  num_sections, nump, sym_formula, chebVec, chebVec_2,  outputfilename);
+	chebyshev::Kubo_solver_FFT_kQuant_nonOrth_ChrisVel solver(R, numMoms,  num_sections, nump, sym_formula, chebVec, chebVec_2,  outputfilename);
 	solver.compute(  gen );
 
 	//Save the table in a file
