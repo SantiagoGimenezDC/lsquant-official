@@ -42,7 +42,7 @@ int main(int argc, char *argv[])
 	int R = (argc >= 4) ? atoi(argv[3]) : 1;
 	//R=1;
 	
-        int num_sections = 1, nump = 20*numMoms;
+        int num_sections = 1, nump = 4*numMoms;
         const double disorder_amplitude = (argc >= 5) ? std::stod(argv[4]) : 0.0;
 
 	chebyshev::formula sym_formula = chebyshev::KUBO_BASTIN;
@@ -70,6 +70,8 @@ int main(int argc, char *argv[])
     }
 
     // ── Load Bloch phases and set up FFTW ─────────────────────────────────────
+
+    if(disorder_amplitude > 0.0)
     {
         std::string phases_file = "operators/" + LABEL + ".BLOCH_PHASES";
         if (!HAM.ReadPhasesFromFile(phases_file))

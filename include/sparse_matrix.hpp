@@ -427,14 +427,83 @@ public:
     void apply_B_FFT( value_t* out, const value_t* in);
     void apply_Bdagger_FFT( value_t* out, const value_t* in);
 
-    void set_S(Eigen::SparseMatrix<complex<double>, Eigen::RowMajor, indexType>* new_S){    Sk_ = new_S;    }
+
+Eigen::SparseMatrix<complex<double>, Eigen::RowMajor, indexType>
+duplicate_spin_blocks(
+    const Eigen::SparseMatrix<complex<double>, Eigen::RowMajor, indexType>& Sk,
+    int block_size)    // 46
+{
+    const int new_block_size = 2 * block_size;
+    const int new_size       = Sk.rows() / block_size * new_block_size;
+
+    std::vector<Eigen::Triplet<complex<double>, indexType>> triplets;
+    triplets.reserve(2 * Sk.nonZeros());
+
+    // Iterate over all nonzeros of the original matrix.
+    // For RowMajor, outer index = row.
+    for (indexType row = 0; row < Sk.outerSize(); ++row)
+    {
+        const int block     = row / block_size;
+        const int local_row = row % block_size;
+
+        for (Eigen::SparseMatrix<complex<double>, Eigen::RowMajor, indexType>
+                ::InnerIterator it(Sk, row); it; ++it)
+        {
+            const int local_col = it.col() % block_size;
+            const auto val      = it.value();
+
+            const int base_row = block * new_block_size;
+            const int base_col = block * new_block_size;
+
+            // top-left  copy  (spin-up block)
+            triplets.emplace_back(base_row + local_row,
+                                  base_col + local_col,
+                                  val);
+            // bottom-right copy (spin-down block)
+            triplets.emplace_back(base_row + block_size + local_row,
+                                  base_col + block_size + local_col,
+                                  val);
+        }
+    }
+
+    Eigen::SparseMatrix<complex<double>, Eigen::RowMajor, indexType>
+        Sk_new(new_size, new_size);
+    Sk_new.setFromTriplets(triplets.begin(), triplets.end());
+    return Sk_new;
+}
+
+  
+  void set_S(Eigen::SparseMatrix<complex<double>, Eigen::RowMajor, indexType>* new_S){
+    Sk_ = new Eigen::SparseMatrix<std::complex<double>, Eigen::RowMajor, indexType>();
+  
+    (*Sk_) = duplicate_spin_blocks( (*new_S), 46);
+
+
+
+  }
 
     void set_Hk(Eigen::SparseMatrix<complex<double>, Eigen::RowMajor, indexType>* new_Hk){  Hk_ = new_Hk;   }
     void set_dHk_1(Eigen::SparseMatrix<complex<double>, Eigen::RowMajor, indexType>* new_dHk_1){  dHk_1_ = new_dHk_1;   }
     void set_dHk_2(Eigen::SparseMatrix<complex<double>, Eigen::RowMajor, indexType>* new_dHk_2){  dHk_2_ = new_dHk_2;   }
   
-    void set_A_1(Eigen::SparseMatrix<complex<double>, Eigen::RowMajor, indexType>* new_A_1){  A_1_ = new_A_1;  (*A_1d_)=(*A_1_).conjugate().transpose();   }
-    void set_A_2(Eigen::SparseMatrix<complex<double>, Eigen::RowMajor, indexType>* new_A_2){  A_2_ = new_A_2;  (*A_2d_)=(*A_2_).conjugate().transpose();  }
+    void set_A_1(Eigen::SparseMatrix<complex<double>, Eigen::RowMajor, indexType>* new_A_1){
+        A_1d_ = new Eigen::SparseMatrix<std::complex<double>, Eigen::RowMajor, indexType>();
+	A_1_ = new Eigen::SparseMatrix<std::complex<double>, Eigen::RowMajor, indexType>();
+
+	(*A_1_) = duplicate_spin_blocks( (*new_A_1), 46);
+
+        (*A_1d_)=(*A_1_).conjugate().transpose();
+
+    }
+  
+    void set_A_2(Eigen::SparseMatrix<complex<double>, Eigen::RowMajor, indexType>* new_A_2){
+      A_2d_ = new Eigen::SparseMatrix<std::complex<double>, Eigen::RowMajor, indexType>();
+      A_2_ = new Eigen::SparseMatrix<std::complex<double>, Eigen::RowMajor, indexType>();
+      (*A_2_) = duplicate_spin_blocks( (*new_A_2), 46);
+     
+      (*A_2d_)=(*A_2_).conjugate().transpose();
+
+    }
 
 
 
