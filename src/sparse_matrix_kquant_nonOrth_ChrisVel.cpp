@@ -320,10 +320,10 @@ void SparseMatrixType_kQuant_nonOrth_ChrisVel::Multiply_kQuant(const value_t  a,
                                                      value_t  b,
                                                      value_t* y)
 {
-    const int N = Nk * W;
+  const int N = numRows();//Nk * W;
 
-    std::vector<value_t> tmp_1(N);
-
+    //std::vector<value_t> tmp_1(N);
+    std::vector<value_t> tmp_1(N, value_t{0.0, 0.0});
       
     this->Hk_clean_nonOrth( x, tmp_1.data() );
 
@@ -354,21 +354,27 @@ void SparseMatrixType_kQuant_nonOrth_ChrisVel::Multiply_kQuant(const value_t  a,
 
 
 
+
+
+
 void SparseMatrixType_kQuant_nonOrth_ChrisVel::Hk_clean_nonOrth(const value_t * in, value_t * out) {
 
    Eigen::Map<const Eigen::Vector<std::complex<double>, -1>> eig_x(in, numRows());
    Eigen::Vector<std::complex<double>, -1> tmp(numRows());
 
 
-   std::cout<<"Hamiltonian 1   "<<(*Sk_).rows()<<"  "<< tmp.size()<<std::endl;
+
    tmp =  (*Hk_) * eig_x;  
 
 
 
    linalg::orthogonalize(size_t(numRows()), Sk_, tmp.data(), out);
 
-      std::cout<<"Hamiltonian pass"<<std::endl;
+   
+
 };
+
+
 
 void SparseMatrixType_kQuant_nonOrth_ChrisVel::vel_i_nonOrth(const value_t * in, value_t * out, int dir) {
 
@@ -391,7 +397,7 @@ void SparseMatrixType_kQuant_nonOrth_ChrisVel::vel_i_nonOrth(const value_t * in,
     
 
 
-  std::cout<<"Vel 1"<<std::endl;
+
 
   
   
@@ -406,7 +412,7 @@ void SparseMatrixType_kQuant_nonOrth_ChrisVel::vel_i_nonOrth(const value_t * in,
   
   linalg::orthogonalize(size_t(numRows()), Sk_, tmp_2.data(), tmp_1.data());
 
-    std::cout<<"Vel 2"<<std::endl;
+
   tmp_2 = ( *Hk_ ) * tmp_1;
   
   linalg::orthogonalize(size_t(numRows()), Sk_, tmp_2.data(), tmp_1.data());  
@@ -415,7 +421,7 @@ void SparseMatrixType_kQuant_nonOrth_ChrisVel::vel_i_nonOrth(const value_t * in,
 
   
 
-  std::cout<<"Vel 3"<<std::endl;
+
   
 
 
@@ -426,7 +432,7 @@ void SparseMatrixType_kQuant_nonOrth_ChrisVel::vel_i_nonOrth(const value_t * in,
   
   linalg::orthogonalize(size_t(numRows()), Sk_, tmp_2.data(), tmp_1.data());
 
-    std::cout<<"Vel 4"<<std::endl;
+
   if( dir == 1 )
     tmp_2 = std::complex<double>(0,-1.0) * (*A_1d_) * tmp_1;
   else if( dir == 2 )
@@ -435,7 +441,7 @@ void SparseMatrixType_kQuant_nonOrth_ChrisVel::vel_i_nonOrth(const value_t * in,
     
   linalg::orthogonalize(size_t(numRows()), Sk_, tmp_2.data(), tmp_1.data());  
 
-    std::cout<<"Vel 5"<<std::endl;
+
   linalg::axpy(numRows(), 1.0, tmp_1.data(), out);
   
 };

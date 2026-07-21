@@ -1832,6 +1832,7 @@ class Moments_kQuant_nonOrth_ChrisVel
 
 	virtual void SetInitVectors( SparseMatrixType_kQuant_nonOrth_ChrisVel & ,const vector_t&  );
 
+        
 
 	inline
 	double Rescale2ChebyshevDomain(const double energ)
@@ -1870,9 +1871,9 @@ class Vectors_sliced_kQuant_nonOrth_ChrisVel : public Moments_kQuant_nonOrth_Chr
   //virtual void SetInitVectors( const vector_t& );
 
   //virtual void SetInitVectors( SparseMatrixType & ,const vector_t&  );
-	virtual void SetInitVectors_2( const vector_t& );
+	virtual void SetInitVectors( const vector_t& );
 
-	virtual void SetInitVectors_2( SparseMatrixType & ,const vector_t&  );
+	virtual void SetInitVectors( SparseMatrixType & ,const vector_t&  );
 
 	  
 	int NumberOfVectors() const

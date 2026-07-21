@@ -779,7 +779,7 @@ int chebyshev::Vectors_sliced_kQuant::MultiplySliced(SparseMatrixType &OP,  int 
 
 
 
-void chebyshev::Vectors_sliced_kQuant_nonOrth_ChrisVel::SetInitVectors_2( SparseMatrixType &OP , const Moments::vector_t& T0 )
+void chebyshev::Vectors_sliced_kQuant_nonOrth_ChrisVel::SetInitVectors( SparseMatrixType &OP , const Moments::vector_t& T0 )
 {
 
         const auto dim = this->SystemSize();
@@ -801,8 +801,9 @@ void chebyshev::Vectors_sliced_kQuant_nonOrth_ChrisVel::SetInitVectors_2( Sparse
 };
 
 
-void chebyshev::Vectors_sliced_kQuant_nonOrth_ChrisVel::SetInitVectors_2( const Moments::vector_t& T0 )
+void chebyshev::Vectors_sliced_kQuant_nonOrth_ChrisVel::SetInitVectors( const Moments::vector_t& T0 )
 {
+
 
 	assert( T0.size() == this->SystemSize() );
 	const auto dim = this->SystemSize();
@@ -814,9 +815,13 @@ void chebyshev::Vectors_sliced_kQuant_nonOrth_ChrisVel::SetInitVectors_2( const 
 		this->Chebyshev1() = Moments::vector_t(dim,Moments::value_t(0)); 
 	//From now on this-> will be discarded in Chebyshev0() and Chebyshev1()
 
+
 	linalg::copy ( T0, this->Chebyshev0() );
-	this->Hamiltonian().Multiply( 1.0, this->Chebyshev0(), 0.0, this->Chebyshev1() );
+
+	this->Hamiltonian().Multiply( 1.0, this->Chebyshev0().data(), 0.0, this->Chebyshev1().data() );
+
 };
+
 
 
 

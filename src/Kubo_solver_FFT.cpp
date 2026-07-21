@@ -339,8 +339,6 @@ void Kubo_solver_FFT_kQuant_nonOrth::compute(   qstates::generator& gen ){
 
 
 
-  
-
 void Kubo_solver_FFT_kQuant_nonOrth::polynomial_recursion(const vector_t& PhiR, const vector_t& PhiL,
 				Vectors_sliced_kQuant_nonOrth *chebVecL,
 				Vectors_sliced_kQuant_nonOrth *chebVecR,
@@ -801,8 +799,10 @@ void Kubo_solver_FFT_kQuant_nonOrth_ChrisVel::polynomial_recursion(const vector_
 	
 	  time_station csrmv_time_kets;
 
-	  chebVecL->Hamiltonian().vel_i_nonOrth(PhiL.data(),tmp.data(), 1);
-	  chebVecL->SetInitVectors_2( tmp );
+	  
+	  
+	  chebVecL->Hamiltonian().vel_i_nonOrth(PhiR.data(),tmp.data(), 1);
+	  chebVecL->SetInitVectors( tmp );
 	  chebVecL->IterateAllSliced(s);
 
 	  
@@ -814,7 +814,7 @@ void Kubo_solver_FFT_kQuant_nonOrth_ChrisVel::polynomial_recursion(const vector_
 
 	  time_station csrmv_time_bras;  
 
-	  chebVecR->SetInitVectors_2(  PhiR );
+	  chebVecR->SetInitVectors(  PhiR );
 	  chebVecR->IterateAllSliced(s);
 	  chebVecR->MultiplySliced( s );
 		
