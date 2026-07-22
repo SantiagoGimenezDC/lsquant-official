@@ -203,6 +203,7 @@ void linalg::orthogonalize(const size_t Dim, Eigen::SparseMatrix<std::complex<do
   eig_orthogonalized = solver.solve(eig_original);
 
   
+  std::cout << "#iterations:     " << solver.iterations() << std::endl;
   /*
   std::cout << "  max#iterations:" << solver.maxIterations() << std::endl;
   std::cout << "estimated error: " << solver.error()      << std::endl;

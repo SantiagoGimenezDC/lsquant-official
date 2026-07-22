@@ -401,7 +401,7 @@ void SparseMatrixType_kQuant_nonOrth_ChrisVel::vel_i_nonOrth(const value_t * in,
 
   
   
-
+  /*
   if( dir == 1 )
     tmp_2 = std::complex<double>(0,1.0) * (*A_1_) * eig_x;
   else if( dir == 2 )
@@ -443,5 +443,5 @@ void SparseMatrixType_kQuant_nonOrth_ChrisVel::vel_i_nonOrth(const value_t * in,
 
 
   linalg::axpy(numRows(), 1.0, tmp_1.data(), out);
-  
+  */
 };

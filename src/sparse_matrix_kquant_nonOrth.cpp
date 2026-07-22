@@ -320,7 +320,7 @@ void SparseMatrixType_kQuant_nonOrth::Multiply_kQuant(const value_t  a,
                                                      value_t  b,
                                                      value_t* y)
 {
-    const int N = Nk * W;
+  const int N = numRows();//Nk * W;
 
     std::vector<value_t> tmp_1(N);
 

@@ -384,6 +384,7 @@ void SparseMatrixType_kQuant::Multiply_kQuant(const value_t  a,
 {
     const int N = Nk * W;
 
+
     SparseMatrixType::Multiply(a, x, b, y);
 
     if (disorder.empty()) return;

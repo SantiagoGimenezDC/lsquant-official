@@ -65,6 +65,7 @@ int main(int argc, char *argv[])
     }
 
     // ── Load Bloch phases and set up FFTW ─────────────────────────────────────
+    //if (disorder_amplitude > 0.0)
     {
         std::string phases_file = "operators/" + LABEL + ".BLOCH_PHASES";
         if (!HAM.ReadPhasesFromFile(phases_file))
