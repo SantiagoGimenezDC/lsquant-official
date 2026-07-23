@@ -407,7 +407,7 @@ void SparseMatrixType_kQuant_nonOrth_ChrisVel::vel_i_nonOrth(const value_t * in,
   else if( dir == 2 )
     tmp_2 = std::complex<double>(0,1.0) * (*A_2_) * eig_x;
 
-  tmp_2 /= a; //Why?? Is it because the velocity is not adimensionalized? so this is supposed to return de dimension to HK
+  //tmp_2 /= a; //Why?? Is it because the velocity is not adimensionalized? so this is supposed to return de dimension to HK
 
   
   linalg::orthogonalize(size_t(numRows()), Sk_, tmp_2.data(), tmp_1.data());
@@ -424,10 +424,10 @@ void SparseMatrixType_kQuant_nonOrth_ChrisVel::vel_i_nonOrth(const value_t * in,
 
   
 
-
+  
   tmp_2 = ( *Hk_ ) * eig_x;
 
-  tmp_2 /= a; //Why?? Is it because the velocity is not adimensionalized? so this is supposed to return de dimension to HK
+  //tmp_2 /= a; //Why?? Is it because the velocity is not adimensionalized? so this is supposed to return de dimension to HK
 
   
   linalg::orthogonalize(size_t(numRows()), Sk_, tmp_2.data(), tmp_1.data());
@@ -444,4 +444,6 @@ void SparseMatrixType_kQuant_nonOrth_ChrisVel::vel_i_nonOrth(const value_t * in,
 
   linalg::axpy(numRows(), 1.0, tmp_1.data(), out);
   */
+
+  
 };
