@@ -115,9 +115,9 @@ for (int ik = 0; ik < Nk; ++ik) {
 // the iR summation accesses in[] with stride W — kept in cache by the
 // compiler's prefetcher.  OpenMP parallelises over ik.
 // ─────────────────────────────────────────────────────────────────────────────
-void SparseMatrixType_kQuant_nonOrth_ChrisVel::apply_B(value_t* out, const value_t* in) const
+void SparseMatrixType_kQuant_nonOrth_ChrisVel::apply_B(value_t* out, const value_t* in) 
 {
-    const int N = Nk * W;
+    int N = numRows();//Nk * W;
     std::fill(out, out + N, value_t(0.0, 0.0));
 
     #pragma omp parallel for schedule(dynamic)
@@ -157,7 +157,7 @@ void SparseMatrixType_kQuant::apply_B_FFT( value_t* out, const value_t* in)
 	}*/
 void SparseMatrixType_kQuant_nonOrth_ChrisVel::apply_B_FFT(value_t* out, const value_t* in)
 {
-    const int N = Nk * W;
+    int N = this->numRows();//Nk * W;
     for (int i = 0; i < N; ++i)
         fft_buf[i] = in[i];
 
@@ -176,9 +176,9 @@ void SparseMatrixType_kQuant_nonOrth_ChrisVel::apply_B_FFT(value_t* out, const v
 //                        × conj(atom_phase[ik][α])
 //                        × in[ik·W + α]
 // ─────────────────────────────────────────────────────────────────────────────
-void SparseMatrixType_kQuant_nonOrth_ChrisVel::apply_Bdagger(value_t* out, const value_t* in) const
+void SparseMatrixType_kQuant_nonOrth_ChrisVel::apply_Bdagger(value_t* out, const value_t* in) 
 {
-    const int N = Nk * W;
+  int N = this->numRows();//Nk * W;
     std::fill(out, out + N, value_t(0.0, 0.0));
 
     #pragma omp parallel for schedule(dynamic)
@@ -197,7 +197,7 @@ void SparseMatrixType_kQuant_nonOrth_ChrisVel::apply_Bdagger(value_t* out, const
 
 void SparseMatrixType_kQuant_nonOrth_ChrisVel::apply_Bdagger_FFT(value_t* out, const value_t* in)
 {
-    const int N = Nk * W;
+  int N = this->numRows();//Nk * W;
 
     // premultiply by conj(atom_phases)  (first part of B†)
     for (int i = 0; i < N; ++i)
@@ -245,7 +245,7 @@ void SparseMatrixType_kQuant::apply_Bdagger_FFT( value_t* out, const value_t* in
 // ─────────────────────────────────────────────────────────────────────────────
 void SparseMatrixType_kQuant_nonOrth_ChrisVel::PrepareFFT()
 {
-    const int N = Nk * W;
+    int N = this->numRows();//Nk * W;
     // Allocate FFTW-aligned buffer so SIMD paths are used
     fft_buf.resize(N);
 
@@ -284,7 +284,7 @@ void SparseMatrixType_kQuant_nonOrth_ChrisVel::PrepareFFT()
 void SparseMatrixType_kQuant_nonOrth_ChrisVel::GenerateAndersonDisorder(double amplitude,
                                                         unsigned int seed)
 {
-    disorder.resize(Nk * W);
+  disorder.resize(this->numRows());//Nk * W);
     std::srand(seed);
     for (int iR = 0; iR < Nk; ++iR) {
         //NO! --> One random value per unit cell, shared across all orbitals
@@ -324,7 +324,8 @@ void SparseMatrixType_kQuant_nonOrth_ChrisVel::Multiply_kQuant(const value_t  a,
 
     //std::vector<value_t> tmp_1(N);
     std::vector<value_t> tmp_1(N, value_t{0.0, 0.0});
-      
+
+
     this->Hk_clean_nonOrth( x, tmp_1.data() );
 
     if (!disorder.empty()) {
@@ -393,6 +394,8 @@ void SparseMatrixType_kQuant_nonOrth_ChrisVel::vel_i_nonOrth(const value_t * in,
     tmp_2 =  (*dHk_2_) * eig_x;
 
 
+  
+  
   linalg::orthogonalize(size_t(numRows()), Sk_, tmp_2.data(), out);
     
 
@@ -401,49 +404,49 @@ void SparseMatrixType_kQuant_nonOrth_ChrisVel::vel_i_nonOrth(const value_t * in,
 
   
   
-  /*
+  
   if( dir == 1 )
-    tmp_2 = std::complex<double>(0,1.0) * (*A_1_) * eig_x;
+    tmp_2 =  (*A_1_) * eig_x;
   else if( dir == 2 )
-    tmp_2 = std::complex<double>(0,1.0) * (*A_2_) * eig_x;
+    tmp_2 =  (*A_2_) * eig_x;
 
   //tmp_2 /= a; //Why?? Is it because the velocity is not adimensionalized? so this is supposed to return de dimension to HK
+
 
   
   linalg::orthogonalize(size_t(numRows()), Sk_, tmp_2.data(), tmp_1.data());
 
-
-  tmp_2 = ( *Hk_ ) * tmp_1;
+  tmp_2 =  ( *Hk_ ) * tmp_1 ;
+  tmp_2 /= a;
   
   linalg::orthogonalize(size_t(numRows()), Sk_, tmp_2.data(), tmp_1.data());  
-	  
-  linalg::axpy(numRows(), 1.0, tmp_1.data(), out);
+
+
+  linalg::axpy(numRows(), std::complex<double>(0,1.0), tmp_1.data(), out);
 
   
 
-
-  
 
   
   tmp_2 = ( *Hk_ ) * eig_x;
 
-  //tmp_2 /= a; //Why?? Is it because the velocity is not adimensionalized? so this is supposed to return de dimension to HK
+  tmp_2 /= a; //Why?? Is it because the velocity is not adimensionalized? so this is supposed to return de dimension to HK
 
   
   linalg::orthogonalize(size_t(numRows()), Sk_, tmp_2.data(), tmp_1.data());
 
 
   if( dir == 1 )
-    tmp_2 = std::complex<double>(0,-1.0) * (*A_1d_) * tmp_1;
+    tmp_2 =  (*A_1d_) * tmp_1;
   else if( dir == 2 )
-    tmp_2 = std::complex<double>(0,-1.0) * (*A_2d_) * tmp_1;
+    tmp_2 =  (*A_2d_) * tmp_1;
 
     
   linalg::orthogonalize(size_t(numRows()), Sk_, tmp_2.data(), tmp_1.data());  
 
 
-  linalg::axpy(numRows(), 1.0, tmp_1.data(), out);
-  */
+  linalg::axpy(numRows(), std::complex<double>(0,-1.0), tmp_1.data(), out);
+  
 
   
 };

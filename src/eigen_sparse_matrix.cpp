@@ -123,10 +123,10 @@ void SparseMatrixType::ConvertFromCSR(vector<indexType> &cols, vector<indexType>
 
 	std::cout<<"We are no longer assuming a triangular matrix here!"<<std::endl;
 	//std::cout<<"We are assuming a triangular matrix here! considering the bottom triangle as filled with 0s. We are adding the adjoint to the Hamiltonian"<<std::endl;
-	Eigen::SparseMatrix<complex<double>, Eigen::RowMajor, indexType> transp = Eigen::SparseMatrix<complex<double>, Eigen::RowMajor, indexType>( matrix_.adjoint() ); 
+	//Eigen::SparseMatrix<complex<double>, Eigen::RowMajor, indexType> transp = Eigen::SparseMatrix<complex<double>, Eigen::RowMajor, indexType>( matrix_.adjoint() ); 
 	//if( ( transp - matrix_ ).norm() != 0 ){
 	//std::cout<<"Hamiltonian has to be symmetrized."<<std::endl;
-	matrix_ =  0.5 * (transp + matrix_); 
+	//matrix_ =  0.5 * (transp + matrix_); 
 	  //}
 
 	

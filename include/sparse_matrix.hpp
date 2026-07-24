@@ -475,8 +475,8 @@ public:
     void Multiply_kQuant(const value_t , const vector_t& , const value_t , vector_t& );
 
     // ── Bloch transforms (exposed for external use) ───────────────────────────
-    void apply_B       (value_t* out, const value_t* in) const;
-    void apply_Bdagger (value_t* out, const value_t* in) const;
+    void apply_B       (value_t* out, const value_t* in) ;
+    void apply_Bdagger (value_t* out, const value_t* in) ;
 
     void apply_B_FFT( value_t* out, const value_t* in);
     void apply_Bdagger_FFT( value_t* out, const value_t* in);
@@ -528,10 +528,11 @@ duplicate_spin_blocks(
 
   
   void set_S(Eigen::SparseMatrix<complex<double>, Eigen::RowMajor, indexType>* new_S){
-    Sk_ = new Eigen::SparseMatrix<std::complex<double>, Eigen::RowMajor, indexType>();
+    //Sk_ = new Eigen::SparseMatrix<std::complex<double>, Eigen::RowMajor, indexType>();
   
-    (*Sk_) = duplicate_spin_blocks( (*new_S), 46);
+    //(*Sk_) = duplicate_spin_blocks( (*new_S), 46);
 
+    Sk_ = new_S;
 
 
   }
@@ -542,9 +543,9 @@ duplicate_spin_blocks(
   
     void set_A_1(Eigen::SparseMatrix<complex<double>, Eigen::RowMajor, indexType>* new_A_1){
         A_1d_ = new Eigen::SparseMatrix<std::complex<double>, Eigen::RowMajor, indexType>();
-	A_1_ = new Eigen::SparseMatrix<std::complex<double>, Eigen::RowMajor, indexType>();
+	A_1_ = new_A_1 ;//new Eigen::SparseMatrix<std::complex<double>, Eigen::RowMajor, indexType>();
 
-	(*A_1_) = duplicate_spin_blocks( (*new_A_1), 46);
+	//(*A_1_) = duplicate_spin_blocks( (*new_A_1), 46);
 
         (*A_1d_)=(*A_1_).conjugate().transpose();
 
@@ -552,8 +553,8 @@ duplicate_spin_blocks(
   
     void set_A_2(Eigen::SparseMatrix<complex<double>, Eigen::RowMajor, indexType>* new_A_2){
       A_2d_ = new Eigen::SparseMatrix<std::complex<double>, Eigen::RowMajor, indexType>();
-      A_2_ = new Eigen::SparseMatrix<std::complex<double>, Eigen::RowMajor, indexType>();
-      (*A_2_) = duplicate_spin_blocks( (*new_A_2), 46);
+      A_2_ = new_A_2;//new Eigen::SparseMatrix<std::complex<double>, Eigen::RowMajor, indexType>();
+      //(*A_2_) = duplicate_spin_blocks( (*new_A_2), 46);
      
       (*A_2d_)=(*A_2_).conjugate().transpose();
 
