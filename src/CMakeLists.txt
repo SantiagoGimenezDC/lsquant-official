@@ -143,6 +143,9 @@ set(MAIN inline_compute-Kubo-kpm-FFT_kQuant_nonOrth_ChrisVel )
 add_executable(${MAIN} inline_compute-Kubo-kpm-FFT_kQuant_nonOrth_ChrisVel.cpp )
 target_link_libraries(${MAIN} ${KPM_LIB} )
 
+set(MAIN inline_compute-Kubo-kpm-FFT_Bismuthene )
+add_executable(${MAIN} inline_compute-Kubo-kpm-FFT_Bismuthene.cpp )
+target_link_libraries(${MAIN} ${KPM_LIB} )
 
 
 set(MAIN inline_opticalConductivityFromChebmom )

@@ -197,6 +197,7 @@ void SparseMatrixType::Rescale(const complex<double> a, const complex<double> b)
 	
 	matrix_ = a * matrix_ + bID;
 
+
 	a_ = real(a);
 	b_ = real(b);
 

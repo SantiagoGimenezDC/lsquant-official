@@ -50,7 +50,7 @@ int main(int argc, char *argv[])
 
 
 	SparseMatrixType_kQuant_nonOrth_ChrisVel HAM;
-        SparseMatrixType                OP_S, OP_dHk_1, OP_dHk_2, OP_Ak_1, OP_Ak_2;
+        SparseMatrixType                OP_S, OP_dHk_1, OP_dHk_2, OP_Ak_1, OP_Ak_2, OP_Sz;
 
     
 	chebyshev::Vectors_sliced_kQuant_nonOrth_ChrisVel 
@@ -104,6 +104,12 @@ int main(int argc, char *argv[])
         builder.BuildOPFromCSRFile(input);
     }
 
+    {
+        std::string input = "operators/" + LABEL + ".Sz.CSR";
+        builder.setSparseMatrix(&OP_Sz);
+        builder.BuildOPFromCSRFile(input);
+    }
+
     
     {
         std::string input = "operators/" + LABEL + ".dHk_x.CSR";
@@ -112,7 +118,7 @@ int main(int argc, char *argv[])
     }
     
     {
-        std::string input = "operators/" + LABEL + ".dHk_x.CSR";
+        std::string input = "operators/" + LABEL + ".dHk_y.CSR";
         builder.setSparseMatrix(&OP_dHk_2);
         builder.BuildOPFromCSRFile(input);
     }
@@ -124,25 +130,24 @@ int main(int argc, char *argv[])
     }
     
     {
-        std::string input = "operators/" + LABEL + ".Ak_x.CSR";
+        std::string input = "operators/" + LABEL + ".Ak_y.CSR";
         builder.setSparseMatrix(&OP_Ak_2);
         builder.BuildOPFromCSRFile(input);
     }
 
 
 
-
-    
      HAM.set_Hk(HAM.Matrix());
      HAM.set_S(OP_S.Matrix());
      HAM.set_dHk_1(OP_dHk_1.Matrix());
      HAM.set_dHk_2(OP_dHk_2.Matrix());
      HAM.set_A_1(OP_Ak_1.Matrix());
      HAM.set_A_2(OP_Ak_2.Matrix());
+     HAM.set_Sz(OP_Sz.Matrix());
 
      
     // ── Configure Chebyshev moments ───────────────────────────────────────────
-    const double half_width  = (spectral_bounds[1] - spectral_bounds[0]) * 1.0;
+    const double band_width  = (spectral_bounds[1] - spectral_bounds[0]) * 1.0;
     const double band_center = (spectral_bounds[1] + spectral_bounds[0]) * 0.5;
 
 
@@ -150,7 +155,7 @@ int main(int argc, char *argv[])
     // H_bar = (H - b)/a  →  V_bar = V/a  →  disorder entries must be /a too.
     if (disorder_amplitude > 0.0 && !HAM.disorder.empty())
     {
-        const double a = half_width;
+        const double a = band_width;
         std::cout << "Rescaling disorder by 1/a = " << 1.0/a << std::endl;
         for (auto& v : HAM.disorder)
 	  v /= a;  ///= a;
@@ -160,10 +165,18 @@ int main(int argc, char *argv[])
     
 	//CONFIGURE THE CHEBYSHEV MOMENTS
 	chebVec.SystemLabel(LABEL);
-	chebVec.BandWidth ( half_width );
+	chebVec.BandWidth ( band_width );
         chebVec.BandCenter( band_center );
+	chebVec.SetHamiltonian(HAM);
 	chebVec.SetAndRescaleHamiltonian(HAM);
 
+	Eigen::SparseMatrix<complex<double>, Eigen::RowMajor, indexType> *H, *S;
+	H=HAM.Matrix();
+	S=OP_S.Matrix();
+
+	(*H)= (*H) - band_center * (*S)/band_width  ;
+
+	
 	chebVec_2 = chebVec;
 
 	std::cout << "/*----------------------------------------------------------------------------------------*/" ;

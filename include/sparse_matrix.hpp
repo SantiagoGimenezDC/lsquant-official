@@ -540,6 +540,8 @@ duplicate_spin_blocks(
     void set_Hk(Eigen::SparseMatrix<complex<double>, Eigen::RowMajor, indexType>* new_Hk){  Hk_ = new_Hk;   }
     void set_dHk_1(Eigen::SparseMatrix<complex<double>, Eigen::RowMajor, indexType>* new_dHk_1){  dHk_1_ = new_dHk_1;   }
     void set_dHk_2(Eigen::SparseMatrix<complex<double>, Eigen::RowMajor, indexType>* new_dHk_2){  dHk_2_ = new_dHk_2;   }
+    void set_Sz(Eigen::SparseMatrix<complex<double>, Eigen::RowMajor, indexType>* new_Sz){  Sz_ = new_Sz;   }
+
   
     void set_A_1(Eigen::SparseMatrix<complex<double>, Eigen::RowMajor, indexType>* new_A_1){
         A_1d_ = new Eigen::SparseMatrix<std::complex<double>, Eigen::RowMajor, indexType>();
@@ -564,7 +566,7 @@ duplicate_spin_blocks(
 
   
 private:
-  Eigen::SparseMatrix<complex<double>, Eigen::RowMajor, indexType>* Hk_, *Sk_, *dHk_1_, *dHk_2_, *A_1_, *A_2_, *A_1d_, *A_2d_;
+  Eigen::SparseMatrix<complex<double>, Eigen::RowMajor, indexType>* Hk_, *Sk_, *dHk_1_, *dHk_2_, *A_1_, *A_2_, *A_1d_, *A_2d_, *Sz_;
 
 
     // Working buffer for the disorder application (size Nk*W, FFTW-aligned)

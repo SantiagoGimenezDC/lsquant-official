@@ -384,18 +384,22 @@ void SparseMatrixType_kQuant_nonOrth_ChrisVel::vel_i_nonOrth(const value_t * in,
   Eigen::Vector<std::complex<double>, -1> tmp_1( numRows()), tmp_2( numRows());
 
 
-  double a =  this->scaleFactor(); // b = this->shiftFactor();
+  double a =  this->scaleFactor(), b = this->shiftFactor();
 
+  Eigen::SparseMatrix<std::complex<double>,  Eigen::RowMajor, indexType> Id(numRows(),numRows());
 
 
   if( dir == 1 )
-    tmp_2 =  (*dHk_1_) * eig_x;  
+    tmp_2 =  (*dHk_1_) * eig_x;
+    
   else if( dir == 2 )
     tmp_2 =  (*dHk_2_) * eig_x;
 
 
   
-  
+  //if( dir == 1 )
+  //  tmp_2 =  (*Sz_) * tmp_2;
+    
   linalg::orthogonalize(size_t(numRows()), Sk_, tmp_2.data(), out);
     
 
@@ -407,6 +411,8 @@ void SparseMatrixType_kQuant_nonOrth_ChrisVel::vel_i_nonOrth(const value_t * in,
   
   if( dir == 1 )
     tmp_2 =  (*A_1_) * eig_x;
+    
+  
   else if( dir == 2 )
     tmp_2 =  (*A_2_) * eig_x;
 
@@ -416,19 +422,23 @@ void SparseMatrixType_kQuant_nonOrth_ChrisVel::vel_i_nonOrth(const value_t * in,
   
   linalg::orthogonalize(size_t(numRows()), Sk_, tmp_2.data(), tmp_1.data());
 
-  tmp_2 =  ( *Hk_ ) * tmp_1 ;
+  tmp_2 =  ( *Hk_ - b * Id) * tmp_1 ;
   tmp_2 /= a;
   
   linalg::orthogonalize(size_t(numRows()), Sk_, tmp_2.data(), tmp_1.data());  
 
 
+  
+  //if( dir == 1 )
+  //  tmp_1 =  (*Sz_) * tmp_1;
+  
   linalg::axpy(numRows(), std::complex<double>(0,1.0), tmp_1.data(), out);
 
   
 
 
   
-  tmp_2 = ( *Hk_ ) * eig_x;
+  tmp_2 = ( *Hk_  - b * Id ) * eig_x;
 
   tmp_2 /= a; //Why?? Is it because the velocity is not adimensionalized? so this is supposed to return de dimension to HK
 
@@ -441,7 +451,12 @@ void SparseMatrixType_kQuant_nonOrth_ChrisVel::vel_i_nonOrth(const value_t * in,
   else if( dir == 2 )
     tmp_2 =  (*A_2d_) * tmp_1;
 
-    
+
+  
+  //if( dir == 1 )
+  //  tmp_1 =  (*Sz_) * tmp_1;
+
+  
   linalg::orthogonalize(size_t(numRows()), Sk_, tmp_2.data(), tmp_1.data());  
 
 
