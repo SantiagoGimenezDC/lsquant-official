@@ -10,6 +10,8 @@
 #include<eigen3/Eigen/Core>
 #include<eigen3/Eigen/Sparse>
 
+#include "ischo_preconditioner.hpp"
+#include "ischo_preconditioner_block.hpp"
 using std::complex;
 using std::vector;
 using std::string;
@@ -80,6 +82,9 @@ public:
     matrix_ = new_matrix;
     setDimensions(new_matrix.rows(),new_matrix.cols());
   };
+
+  void set_scaleFactor(double new_a){ a_ = new_a; };
+  void set_shiftFactor(double new_b){ b_ = new_b; };
 
   double scaleFactor(){ return a_; };
   double shiftFactor(){ return b_; };
@@ -534,8 +539,13 @@ duplicate_spin_blocks(
 
     Sk_ = new_S;
 
+    M_ = new IschoPreconditioner_block<indexType>(92,25);
+    
+    M_->compute(Sk_);
 
+    std::cout<<"Ischo preconditioner run"<<std::endl;
   }
+  void Rescale_nonOrth(const value_t a,const value_t b);
 
     void set_Hk(Eigen::SparseMatrix<complex<double>, Eigen::RowMajor, indexType>* new_Hk){  Hk_ = new_Hk;   }
     void set_dHk_1(Eigen::SparseMatrix<complex<double>, Eigen::RowMajor, indexType>* new_dHk_1){  dHk_1_ = new_dHk_1;   }
@@ -567,6 +577,7 @@ duplicate_spin_blocks(
   
 private:
   Eigen::SparseMatrix<complex<double>, Eigen::RowMajor, indexType>* Hk_, *Sk_, *dHk_1_, *dHk_2_, *A_1_, *A_2_, *A_1d_, *A_2d_, *Sz_;
+    IschoPreconditioner_block<indexType> *M_;
 
 
     // Working buffer for the disorder application (size Nk*W, FFTW-aligned)

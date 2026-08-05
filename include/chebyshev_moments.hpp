@@ -1796,6 +1796,12 @@ class Moments_kQuant_nonOrth_ChrisVel
 		this->Hamiltonian().Rescale(this->ScaleFactor(),this->ShiftFactor());
 		return 0;
 	};
+//Heavy functions
+	int  Rescale2ChebyshevDomain_nonOrth()
+	{
+		this->Hamiltonian().Rescale_nonOrth(this->ScaleFactor(),this->ShiftFactor());
+		return 0;
+	};
 
 
 	inline
@@ -1812,6 +1818,23 @@ class Moments_kQuant_nonOrth_ChrisVel
 		this->SetHamiltonian(NHAM );
 		this->Rescale2ChebyshevDomain();
 	};
+
+
+	inline
+	void SetAndRescaleHamiltonian_nonOrth(SparseMatrixType_kQuant_nonOrth_ChrisVel& NHAM)
+	{ 
+		this->SetHamiltonian(NHAM );
+		this->Rescale2ChebyshevDomain_nonOrth();
+	};
+
+
+	inline
+	void SetAndRescaleHamiltonian_nonOrth(SparseMatrixType_kQuant_nonOrth_ChrisVel* NHAM)
+	{ 
+		this->SetHamiltonian(NHAM );
+		this->Rescale2ChebyshevDomain_nonOrth();
+	};
+
   
 	inline
 	void SystemSize(const int dim)  { system_size = dim; };

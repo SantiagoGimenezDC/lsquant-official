@@ -5,6 +5,8 @@
 #include <complex>
 #include <vector>
 #include <cassert>
+#include "ischo_preconditioner.hpp"
+#include "ischo_preconditioner_block.hpp"
 #include "sparse_matrix.hpp"
 
 
@@ -49,7 +51,11 @@ void orthogonalize(SparseMatrixType &,  const Eigen::Vector<std::complex<double>
 
   
 void orthogonalize(const size_t, Eigen::SparseMatrix<std::complex<double>,  Eigen::RowMajor, indexType>*,  const std::complex<double>*,  std::complex<double>* );
+
   
-} // namespace linalg
+void orthogonalize(const size_t , Eigen::SparseMatrix<std::complex<double>,  Eigen::RowMajor, indexType>* , IschoPreconditioner<indexType> *, const std::complex<double>* , std::complex<double>* );
+void orthogonalize(const size_t , Eigen::SparseMatrix<std::complex<double>,  Eigen::RowMajor, indexType>* , IschoPreconditioner_block<indexType> *, const std::complex<double>* , std::complex<double>* );
+
+  } // namespace linalg
 
 #endif

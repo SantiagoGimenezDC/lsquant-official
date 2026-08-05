@@ -106,6 +106,18 @@ for (int ik = 0; ik < Nk; ++ik) {
 }
 
 
+void SparseMatrixType_kQuant_nonOrth_ChrisVel::Rescale_nonOrth(const complex<double> a, const complex<double> b)
+{
+	
+
+        (*this->Matrix()) = a * (*this->Matrix()) + b*(*Sk_);
+
+	set_scaleFactor(real(a));
+	set_shiftFactor(real(b));
+
+	return ;
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // apply_B :  real-space → k-space
 //
@@ -369,7 +381,7 @@ void SparseMatrixType_kQuant_nonOrth_ChrisVel::Hk_clean_nonOrth(const value_t * 
 
 
 
-   linalg::orthogonalize(size_t(numRows()), Sk_, tmp.data(), out);
+   linalg::orthogonalize(size_t(numRows()), Sk_, M_, tmp.data(), out);
 
    
 
@@ -400,7 +412,7 @@ void SparseMatrixType_kQuant_nonOrth_ChrisVel::vel_i_nonOrth(const value_t * in,
   //if( dir == 1 )
   //  tmp_2 =  (*Sz_) * tmp_2;
     
-  linalg::orthogonalize(size_t(numRows()), Sk_, tmp_2.data(), out);
+  linalg::orthogonalize(size_t(numRows()), Sk_,  M_, tmp_2.data(), out);
     
 
 
@@ -420,12 +432,13 @@ void SparseMatrixType_kQuant_nonOrth_ChrisVel::vel_i_nonOrth(const value_t * in,
 
 
   
-  linalg::orthogonalize(size_t(numRows()), Sk_, tmp_2.data(), tmp_1.data());
+  linalg::orthogonalize(size_t(numRows()), Sk_,  M_, tmp_2.data(), tmp_1.data());
 
-  tmp_2 =  ( *Hk_ - b * Id) * tmp_1 ;
+  tmp_2  =   *Hk_* tmp_1;
+  tmp_2 -= b * (*Sk_)* tmp_1  ;
   tmp_2 /= a;
   
-  linalg::orthogonalize(size_t(numRows()), Sk_, tmp_2.data(), tmp_1.data());  
+  linalg::orthogonalize(size_t(numRows()), Sk_,  M_, tmp_2.data(), tmp_1.data());  
 
 
   
@@ -438,12 +451,13 @@ void SparseMatrixType_kQuant_nonOrth_ChrisVel::vel_i_nonOrth(const value_t * in,
 
 
   
-  tmp_2 = ( *Hk_  - b * Id ) * eig_x;
+  tmp_2  =  *Hk_* eig_x;
+  tmp_2 -= b * (*Sk_)  * eig_x;
 
   tmp_2 /= a; //Why?? Is it because the velocity is not adimensionalized? so this is supposed to return de dimension to HK
 
   
-  linalg::orthogonalize(size_t(numRows()), Sk_, tmp_2.data(), tmp_1.data());
+  linalg::orthogonalize(size_t(numRows()), Sk_,  M_, tmp_2.data(), tmp_1.data());
 
 
   if( dir == 1 )
@@ -457,7 +471,7 @@ void SparseMatrixType_kQuant_nonOrth_ChrisVel::vel_i_nonOrth(const value_t * in,
   //  tmp_1 =  (*Sz_) * tmp_1;
 
   
-  linalg::orthogonalize(size_t(numRows()), Sk_, tmp_2.data(), tmp_1.data());  
+  linalg::orthogonalize(size_t(numRows()), Sk_,  M_, tmp_2.data(), tmp_1.data());  
 
 
   linalg::axpy(numRows(), std::complex<double>(0,-1.0), tmp_1.data(), out);

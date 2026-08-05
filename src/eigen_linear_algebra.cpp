@@ -184,6 +184,71 @@ void linalg::orthogonalize(SparseMatrixType& S, const std::vector< std::complex<
 };
 
 
+
+
+
+void linalg::orthogonalize(const size_t Dim, Eigen::SparseMatrix<std::complex<double>,  Eigen::RowMajor, indexType>* S, IschoPreconditioner<indexType> *M, const std::complex<double>* original, std::complex<double>* orthogonalized){
+
+  
+  Eigen::Map<const Eigen::Vector<std::complex<double>, -1>>
+    eig_original(original, Dim);
+  Eigen::Map<Eigen::Vector<std::complex<double>, -1>>
+    eig_orthogonalized(orthogonalized, Dim);
+
+
+
+  //eig_orthogonalized=eig_original;
+
+  
+  Eigen::ConjugateGradient<  Eigen::SparseMatrix<std::complex<double>,  Eigen::RowMajor, indexType>, Eigen::Lower,  Eigen::DiagonalPreconditioner< std::complex<double>> > solver;
+  solver.setTolerance(0.00001); 
+  solver.setMaxIterations(1000);
+  solver.compute((*S));
+  Eigen::Vector<std::complex<double>, -1> first_guess = M->solve(eig_original);
+  eig_orthogonalized = solver.solveWithGuess(eig_original,first_guess);
+
+  
+  std::cout << "#iterations:     " << solver.iterations() << std::endl;
+  /*
+  std::cout << "  max#iterations:" << solver.maxIterations() << std::endl;
+  std::cout << "estimated error: " << solver.error()      << std::endl;
+  std::cout << "  tolerance :    " << solver.tolerance()      << std::endl;
+  std::cout<<  "Vector norm :    " <<eig_original.norm()<<std::endl;    
+  */
+};
+
+
+void linalg::orthogonalize(const size_t Dim, Eigen::SparseMatrix<std::complex<double>,  Eigen::RowMajor, indexType>* S, IschoPreconditioner_block<indexType> *M, const std::complex<double>* original, std::complex<double>* orthogonalized){
+
+  
+  Eigen::Map<const Eigen::Vector<std::complex<double>, -1>>
+    eig_original(original, Dim);
+  Eigen::Map<Eigen::Vector<std::complex<double>, -1>>
+    eig_orthogonalized(orthogonalized, Dim);
+
+
+
+  //eig_orthogonalized=eig_original;
+
+  
+  Eigen::ConjugateGradient<  Eigen::SparseMatrix<std::complex<double>,  Eigen::RowMajor, indexType>, Eigen::Lower,  Eigen::DiagonalPreconditioner< std::complex<double>> > solver;
+  solver.setTolerance(0.00001); 
+  solver.setMaxIterations(1000);
+  solver.compute((*S));
+  Eigen::Vector<std::complex<double>, -1> first_guess = M->solve(eig_original);
+  eig_orthogonalized = solver.solveWithGuess(eig_original,first_guess);
+
+  
+  std::cout << "#iterations, block precon:     " << solver.iterations() << std::endl;
+  /*
+  std::cout << "  max#iterations:" << solver.maxIterations() << std::endl;
+  std::cout << "estimated error: " << solver.error()      << std::endl;
+  std::cout << "  tolerance :    " << solver.tolerance()      << std::endl;
+  std::cout<<  "Vector norm :    " <<eig_original.norm()<<std::endl;    
+  */
+};
+
+
 void linalg::orthogonalize(const size_t Dim, Eigen::SparseMatrix<std::complex<double>,  Eigen::RowMajor, indexType>* S, const std::complex<double>* original, std::complex<double>* orthogonalized){
 
   
@@ -203,7 +268,7 @@ void linalg::orthogonalize(const size_t Dim, Eigen::SparseMatrix<std::complex<do
   eig_orthogonalized = solver.solve(eig_original);
 
   
-  //std::cout << "#iterations:     " << solver.iterations() << std::endl;
+  std::cout << "#iterations:     " << solver.iterations() << std::endl;
   /*
   std::cout << "  max#iterations:" << solver.maxIterations() << std::endl;
   std::cout << "estimated error: " << solver.error()      << std::endl;

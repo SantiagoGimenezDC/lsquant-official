@@ -167,14 +167,14 @@ int main(int argc, char *argv[])
 	chebVec.SystemLabel(LABEL);
 	chebVec.BandWidth ( band_width );
         chebVec.BandCenter( band_center );
-	chebVec.SetHamiltonian(HAM);
-	chebVec.SetAndRescaleHamiltonian(HAM);
+	
+	chebVec.SetAndRescaleHamiltonian_nonOrth(HAM);
 
-	Eigen::SparseMatrix<complex<double>, Eigen::RowMajor, indexType> *H, *S;
-	H=HAM.Matrix();
-	S=OP_S.Matrix();
+	//Eigen::SparseMatrix<complex<double>, Eigen::RowMajor, indexType> *H, *S;
+	//H=HAM.Matrix();
+	//S=OP_S.Matrix();
 
-	(*H)= (*H) - band_center * (*S)/band_width  ;
+	//(*H)= (*H) - band_center * (*S)/band_width  ;
 
 	
 	chebVec_2 = chebVec;
