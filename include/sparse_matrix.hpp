@@ -12,6 +12,8 @@
 
 #include "ischo_preconditioner.hpp"
 #include "ischo_preconditioner_block.hpp"
+#include "perfect_preconditioner.hpp"
+#include "chebyshev_sinv_preconditioner.hpp"
 using std::complex;
 using std::vector;
 using std::string;
@@ -539,8 +541,8 @@ duplicate_spin_blocks(
 
     Sk_ = new_S;
 
-    M_ = new IschoPreconditioner_block<indexType>(92,25);
-    
+    //M_ = new IschoPreconditioner_block<indexType>(25,92);
+    M_ =  new ChebyshevSInvPreconditioner<indexType>(25, 92, 400);
     M_->compute(Sk_);
 
     std::cout<<"Ischo preconditioner run"<<std::endl;
@@ -577,8 +579,8 @@ duplicate_spin_blocks(
   
 private:
   Eigen::SparseMatrix<complex<double>, Eigen::RowMajor, indexType>* Hk_, *Sk_, *dHk_1_, *dHk_2_, *A_1_, *A_2_, *A_1d_, *A_2d_, *Sz_;
-    IschoPreconditioner_block<indexType> *M_;
-
+  ChebyshevSInvPreconditioner<indexType> *M_;
+  //IschoPreconditioner_block<indexType> *M_;
 
     // Working buffer for the disorder application (size Nk*W, FFTW-aligned)
     std::vector<value_t> fft_buf;

@@ -30,9 +30,9 @@
 
 #pragma once
 
-#include <eigen-3.4.0/Eigen/Sparse>
-#include <eigen-3.4.0/Eigen/IterativeLinearSolvers>
-#include <eigen-3.4.0/Eigen/OrderingMethods>
+#include <eigen3/Eigen/Sparse>
+#include <eigen3/Eigen/IterativeLinearSolvers>
+#include <eigen3/Eigen/OrderingMethods>
 
 #include <complex>
 #include <stdexcept>
