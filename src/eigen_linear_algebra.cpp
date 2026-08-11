@@ -286,7 +286,7 @@ void linalg::orthogonalize(const size_t Dim, Eigen::SparseMatrix<std::complex<do
 
 
 
-void linalg::orthogonalize(const size_t Dim, Eigen::SparseMatrix<std::complex<double>,  Eigen::RowMajor, indexType>* S,  ChebyshevSInvPreconditioner<indexType> *M, const std::complex<double>* original, std::complex<double>* orthogonalized){
+void linalg::orthogonalize(const size_t Dim, Eigen::SparseMatrix<std::complex<double>,  Eigen::RowMajor, indexType>* S,  ChebyshevSInvSqrtPreconditioner<indexType> *M, const std::complex<double>* original, std::complex<double>* orthogonalized){
 
   
   Eigen::Map<const Eigen::Vector<std::complex<double>, -1>>
@@ -298,6 +298,19 @@ void linalg::orthogonalize(const size_t Dim, Eigen::SparseMatrix<std::complex<do
 
 };
 
+
+
+void linalg::orthogonalize(const size_t Dim, Eigen::SparseMatrix<std::complex<double>,  Eigen::RowMajor, indexType>* S,  ChebyshevSInvPreconditioner<indexType> *M, const std::complex<double>* original, std::complex<double>* orthogonalized){
+
+  
+  Eigen::Map<const Eigen::Vector<std::complex<double>, -1>>
+    eig_original(original, Dim);
+  Eigen::Map<Eigen::Vector<std::complex<double>, -1>>
+    eig_orthogonalized(orthogonalized, Dim);
+
+  eig_orthogonalized = M->solve(eig_original);
+
+};
 
 
 

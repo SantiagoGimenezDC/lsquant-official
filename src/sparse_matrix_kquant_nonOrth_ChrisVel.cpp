@@ -338,7 +338,7 @@ void SparseMatrixType_kQuant_nonOrth_ChrisVel::Multiply_kQuant(const value_t  a,
     std::vector<value_t> tmp_1(N, value_t{0.0, 0.0});
 
 
-    this->Hk_clean_nonOrth( x, tmp_1.data() );
+    this->Hk_clean_nonOrth_Loewdin( x, tmp_1.data() );
 
     if (!disorder.empty()) {
       // Use two separate buffers — fft_buf is used internally by both FFT functions
@@ -389,7 +389,7 @@ void SparseMatrixType_kQuant_nonOrth_ChrisVel::Hk_clean_nonOrth(const value_t * 
 
 
 
-void SparseMatrixType_kQuant_nonOrth_ChrisVel::vel_i_nonOrth(const value_t * in, value_t * out, int dir) {
+void SparseMatrixType_kQuant_nonOrth_ChrisVel::vel_i_nonOrth_oneSided(const value_t * in, value_t * out, int dir) {
 
   Eigen::Map<const Eigen::Vector<std::complex<double>, -1>> eig_x(in, numRows());
   //Eigen::Map< Eigen::Vector<std::complex<double>, -1>>  out_eig(out, numRows());
@@ -475,6 +475,127 @@ void SparseMatrixType_kQuant_nonOrth_ChrisVel::vel_i_nonOrth(const value_t * in,
 
 
   linalg::axpy(numRows(), std::complex<double>(0,-1.0), tmp_1.data(), out);
+  
+
+  
+};
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+void SparseMatrixType_kQuant_nonOrth_ChrisVel::Hk_clean_nonOrth_Loewdin(const value_t * in, value_t * out) {
+
+   Eigen::Map<const Eigen::Vector<std::complex<double>, -1>> eig_x(in, numRows());
+   Eigen::Vector<std::complex<double>, -1> tmp(numRows());
+
+
+   linalg::orthogonalize(size_t(numRows()), Sk_, M_Loew_, eig_x.data(), tmp.data());
+
+   tmp =  (*Hk_) * tmp;  
+
+   linalg::orthogonalize(size_t(numRows()), Sk_, M_Loew_, tmp.data(), out);
+
+   
+
+};
+
+
+
+void SparseMatrixType_kQuant_nonOrth_ChrisVel::vel_i_nonOrth_Loewdin(const value_t * in, value_t * out, int dir) {
+
+  Eigen::Map<const Eigen::Vector<std::complex<double>, -1>> eig_x(in, numRows());
+  //Eigen::Map< Eigen::Vector<std::complex<double>, -1>>  out_eig(out, numRows());
+  Eigen::Vector<std::complex<double>, -1> tmp_1( numRows()), tmp_2( numRows());
+
+
+  double a =  this->scaleFactor(), b = this->shiftFactor();
+
+  Eigen::SparseMatrix<std::complex<double>,  Eigen::RowMajor, indexType> Id(numRows(),numRows());
+
+
+
+  
+  linalg::orthogonalize(size_t(numRows()), Sk_,  M_Loew_, eig_x.data(), tmp_2.data());
+
+  if( dir == 1 )
+    tmp_2 =  (*dHk_1_) * tmp_2;
+    
+  else if( dir == 2 )
+    tmp_2 =  (*dHk_2_) * tmp_2;
+  
+  linalg::orthogonalize(size_t(numRows()), Sk_,  M_Loew_, tmp_2.data(), out);
+    
+
+
+
+
+  
+
+  
+  linalg::orthogonalize(size_t(numRows()), Sk_,  M_Loew_, eig_x.data(), tmp_2.data());
+  
+  if( dir == 1 )
+    tmp_2 =  (*A_1_) * tmp_2;
+    
+  
+  else if( dir == 2 )
+    tmp_2 =  (*A_2_) * tmp_2;
+  
+  
+  linalg::orthogonalize(size_t(numRows()), Sk_,  M_Loew_, tmp_2.data(), tmp_1.data());
+  linalg::orthogonalize(size_t(numRows()), Sk_,  M_Loew_, tmp_1.data(), tmp_2.data());
+
+  tmp_1  =   *Hk_* tmp_2;
+  tmp_1 -= b * (*Sk_)* tmp_2  ;
+  tmp_1 /= a;
+  
+  linalg::orthogonalize(size_t(numRows()), Sk_,  M_Loew_, tmp_1.data(), tmp_2.data());  
+
+
+  linalg::axpy(numRows(), std::complex<double>(0,1.0), tmp_2.data(), out);
+
+  
+
+
+
+
+
+
+  
+  linalg::orthogonalize(size_t(numRows()), Sk_,  M_Loew_, eig_x.data(), tmp_1.data());    
+  
+  tmp_2  =  *Hk_* tmp_1;
+  tmp_2 -= b * (*Sk_)  * tmp_1;
+
+  tmp_2 /= a;
+  
+  linalg::orthogonalize(size_t(numRows()), Sk_,  M_Loew_, tmp_2.data(), tmp_1.data());
+  linalg::orthogonalize(size_t(numRows()), Sk_,  M_Loew_, tmp_1.data(), tmp_2.data());
+
+  
+  if( dir == 1 )
+    tmp_1 =  (*A_1d_) * tmp_2;
+  else if( dir == 2 )
+    tmp_1 =  (*A_2d_) * tmp_2;
+
+
+
+  
+  linalg::orthogonalize(size_t(numRows()), Sk_,  M_Loew_, tmp_1.data(), tmp_2.data());  
+
+
+  linalg::axpy(numRows(), std::complex<double>(0,-1.0), tmp_2.data(), out);
   
 
   

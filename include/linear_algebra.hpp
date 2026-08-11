@@ -9,6 +9,8 @@
 #include "ischo_preconditioner_block.hpp"
 #include "perfect_preconditioner.hpp"
 #include "chebyshev_sinv_preconditioner.hpp"
+#include "chebyshev_sinvsqrt_preconditioner.hpp"
+
 #include "sparse_matrix.hpp"
 
 
@@ -62,6 +64,8 @@ void orthogonalize(const size_t , Eigen::SparseMatrix<std::complex<double>,  Eig
   void orthogonalize(const size_t , Eigen::SparseMatrix<std::complex<double>,  Eigen::RowMajor, indexType>* , PerfectPreconditioner<indexType> *, const std::complex<double>* , std::complex<double>* );
   
   void orthogonalize(const size_t , Eigen::SparseMatrix<std::complex<double>,  Eigen::RowMajor, indexType>* , ChebyshevSInvPreconditioner<indexType> *, const std::complex<double>* , std::complex<double>* );
+
+  void orthogonalize(const size_t , Eigen::SparseMatrix<std::complex<double>,  Eigen::RowMajor, indexType>* , ChebyshevSInvSqrtPreconditioner<indexType> *, const std::complex<double>* , std::complex<double>* );
 
   } // namespace linalg
 

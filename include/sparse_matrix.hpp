@@ -14,6 +14,8 @@
 #include "ischo_preconditioner_block.hpp"
 #include "perfect_preconditioner.hpp"
 #include "chebyshev_sinv_preconditioner.hpp"
+#include "chebyshev_sinvsqrt_preconditioner.hpp"
+
 using std::complex;
 using std::vector;
 using std::string;
@@ -473,10 +475,15 @@ public:
 
 
     void Hk_clean_nonOrth(const value_t *, value_t * ) ;
-    void vel_i_nonOrth(const value_t *, value_t *, int ) ;
+    void vel_i_nonOrth(const value_t *in, value_t * out, int dir) {vel_i_nonOrth_Loewdin(in, out,  dir);};
+    void vel_i_nonOrth_oneSided(const value_t *, value_t *, int ) ;
 
+    void Hk_clean_nonOrth_Loewdin(const value_t *, value_t * ) ;
+    void vel_i_nonOrth_Loewdin(const value_t *, value_t *, int ) ;
+
+  
     virtual void Multiply(const value_t a, const value_t * vec1, const value_t b, value_t * vec2) override { this->Multiply_kQuant(a,  vec1,  b,  vec2); } ;
-    virtual  void Multiply(const value_t a, const vector_t& vec1, const value_t b, vector_t& vec2) override { this->Multiply_kQuant(a,  vec1,  b,  vec2); } ;
+    virtual void Multiply(const value_t a, const vector_t& vec1, const value_t b, vector_t& vec2) override { this->Multiply_kQuant(a,  vec1,  b,  vec2); } ;
 
     void Multiply_kQuant(const value_t , const value_t *, const value_t , value_t * ) ;
     void Multiply_kQuant(const value_t , const vector_t& , const value_t , vector_t& );
@@ -545,7 +552,10 @@ duplicate_spin_blocks(
     M_ =  new ChebyshevSInvPreconditioner<indexType>(25, 92, 400);
     M_->compute(Sk_);
 
-    std::cout<<"Ischo preconditioner run"<<std::endl;
+    M_Loew_ =  new ChebyshevSInvSqrtPreconditioner<indexType>(25, 92, 200);
+    M_Loew_->compute(Sk_);
+
+
   }
   void Rescale_nonOrth(const value_t a,const value_t b);
 
@@ -580,6 +590,8 @@ duplicate_spin_blocks(
 private:
   Eigen::SparseMatrix<complex<double>, Eigen::RowMajor, indexType>* Hk_, *Sk_, *dHk_1_, *dHk_2_, *A_1_, *A_2_, *A_1d_, *A_2d_, *Sz_;
   ChebyshevSInvPreconditioner<indexType> *M_;
+  ChebyshevSInvSqrtPreconditioner<indexType> *M_Loew_;
+
   //IschoPreconditioner_block<indexType> *M_;
 
     // Working buffer for the disorder application (size Nk*W, FFTW-aligned)

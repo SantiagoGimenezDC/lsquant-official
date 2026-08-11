@@ -36,9 +36,9 @@
 
 #pragma once
 
-#include <Eigen/Sparse>
-#include <Eigen/Dense>
-#include <Eigen/Eigenvalues>
+#include <eigen3/Eigen/Sparse>
+#include <eigen3/Eigen/Dense>
+#include <eigen3/Eigen/Eigenvalues>
 
 #include <cmath>
 #include <complex>
