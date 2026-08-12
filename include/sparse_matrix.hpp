@@ -425,7 +425,7 @@ class SparseMatrixType_kQuant_nonOrth_ChrisVel : public SparseMatrixType
 {
 public:
     SparseMatrixType_kQuant_nonOrth_ChrisVel()
-        : Nk(0), W(0), kx(0), ky(0), kz(0),
+      : Nk(0), W(0), kx(0), ky(0), kz(0), Nmoms_(200), norbs_(46), nk_(25),
           plan_fwd(nullptr), plan_bwd(nullptr) {}
 
     ~SparseMatrixType_kQuant_nonOrth_ChrisVel()
@@ -473,6 +473,8 @@ public:
     // Computes:  y = a * (H_k + B† V B) * x + b * y
     // If disorder is empty, falls back to H_k only (pure k-space).
 
+  
+    void sz(const Eigen::Vector<std::complex<double>, -1>&, Eigen::Vector<std::complex<double>, -1>& );
 
     void Hk_clean_nonOrth(const value_t *, value_t * ) ;
     void vel_i_nonOrth(const value_t *in, value_t * out, int dir) {vel_i_nonOrth_Loewdin(in, out,  dir);};
@@ -549,10 +551,10 @@ duplicate_spin_blocks(
     Sk_ = new_S;
 
     //M_ = new IschoPreconditioner_block<indexType>(25,92);
-    M_ =  new ChebyshevSInvPreconditioner<indexType>(25, 92, 400);
+    M_ =  new ChebyshevSInvPreconditioner<indexType>(nk_, 2*norbs_,  2*Nmoms_);
     M_->compute(Sk_);
 
-    M_Loew_ =  new ChebyshevSInvSqrtPreconditioner<indexType>(25, 92, 200);
+    M_Loew_ =  new ChebyshevSInvSqrtPreconditioner<indexType>(nk_, 2*norbs_, Nmoms_);
     M_Loew_->compute(Sk_);
 
 
@@ -592,6 +594,7 @@ private:
   ChebyshevSInvPreconditioner<indexType> *M_;
   ChebyshevSInvSqrtPreconditioner<indexType> *M_Loew_;
 
+  int Nmoms_, norbs_, nk_;
   //IschoPreconditioner_block<indexType> *M_;
 
     // Working buffer for the disorder application (size Nk*W, FFTW-aligned)

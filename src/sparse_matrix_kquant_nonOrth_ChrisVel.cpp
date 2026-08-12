@@ -480,7 +480,17 @@ void SparseMatrixType_kQuant_nonOrth_ChrisVel::vel_i_nonOrth_oneSided(const valu
   
 };
 
+void SparseMatrixType_kQuant_nonOrth_ChrisVel::sz(const Eigen::Vector<std::complex<double>, -1>& in, Eigen::Vector<std::complex<double>, -1>& out)
+{
+    const int block_size = 2 * norbs_;  
 
+    out=in;
+
+    #pragma omp parallel for schedule(static)
+    for (int ik = 0; ik < nk_; ++ik)
+        out.segment(ik * block_size + norbs_, norbs_) *= -1.0;
+ 
+}
 
 
 
@@ -515,8 +525,29 @@ void SparseMatrixType_kQuant_nonOrth_ChrisVel::Hk_clean_nonOrth_Loewdin(const va
 void SparseMatrixType_kQuant_nonOrth_ChrisVel::vel_i_nonOrth_Loewdin(const value_t * in, value_t * out, int dir) {
 
   Eigen::Map<const Eigen::Vector<std::complex<double>, -1>> eig_x(in, numRows());
-  //Eigen::Map< Eigen::Vector<std::complex<double>, -1>>  out_eig(out, numRows());
+  Eigen::Map< Eigen::Vector<std::complex<double>, -1>>  out_eig(out, numRows());
   Eigen::Vector<std::complex<double>, -1> tmp_1( numRows()), tmp_2( numRows());
+
+
+  if( dir==3 ){
+   
+    //sz(eig_x, tmp_1);
+
+    tmp_1 = (*Sz_) * eig_x;
+    vel_i_nonOrth_Loewdin(tmp_1.data(), out_eig.data(), 2);
+
+    
+    vel_i_nonOrth_Loewdin(eig_x.data(), tmp_1.data(), 2);
+    //sz(tmp_1, tmp_2);
+
+    tmp_2 = (*Sz_) * tmp_1;
+    
+
+    out_eig = 0.25 * (out_eig + tmp_2);
+
+    return;
+  }
+
 
 
   double a =  this->scaleFactor(), b = this->shiftFactor();

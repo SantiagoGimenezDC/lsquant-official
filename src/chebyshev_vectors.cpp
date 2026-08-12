@@ -871,7 +871,7 @@ int chebyshev::Vectors_sliced_kQuant_nonOrth_ChrisVel::MultiplySliced(  int s)
 	for(int m=0; m < this->NumberOfVectors(); m++ )
 	{
 	  linalg::introduce_segment(Chebmu_.ListElem(m), tmp1, segment_start);
-	  this->Hamiltonian().vel_i_nonOrth(tmp1.data(),tmp2.data(), 2);
+	  this->Hamiltonian().vel_i_nonOrth(tmp1.data(),tmp2.data(), 1);
 	  //OP.Multiply(1.0,tmp1,0.0, tmp2); //Multiply(  OPV(), tmp2 );
 	  linalg::extract_segment(tmp2, segment_start,  Chebmu_.ListElem(m));	  
 	}

@@ -801,7 +801,7 @@ void Kubo_solver_FFT_kQuant_nonOrth_ChrisVel::polynomial_recursion(const vector_
 
 	  
 	  
-	  chebVecL->Hamiltonian().vel_i_nonOrth(PhiR.data(),tmp.data(), 1);
+	  chebVecL->Hamiltonian().vel_i_nonOrth(PhiR.data(),tmp.data(), 3);
 	  chebVecL->SetInitVectors( tmp );
 	  chebVecL->IterateAllSliced(s);
 
