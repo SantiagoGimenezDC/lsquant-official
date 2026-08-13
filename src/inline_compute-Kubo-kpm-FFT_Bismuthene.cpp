@@ -49,7 +49,7 @@ int main(int argc, char *argv[])
 	//chebyshev::Moments Hamiltonian_dummyMoms; //load number of moments
 
 
-	SparseMatrixType_kQuant_nonOrth_ChrisVel HAM;
+	SparseMatrixType_kQuant_nonOrth_ChrisVel HAM(200, 46, 25);
         SparseMatrixType                OP_S, OP_dHk_1, OP_dHk_2, OP_Ak_1, OP_Ak_2, OP_Sz;
 
     

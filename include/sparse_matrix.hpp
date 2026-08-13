@@ -426,8 +426,15 @@ class SparseMatrixType_kQuant_nonOrth_ChrisVel : public SparseMatrixType
 public:
     SparseMatrixType_kQuant_nonOrth_ChrisVel()
       : Nk(0), W(0), kx(0), ky(0), kz(0), Nmoms_(200), norbs_(46), nk_(25),
-          plan_fwd(nullptr), plan_bwd(nullptr) {}
+	plan_fwd(nullptr), plan_bwd(nullptr),  Hk_(nullptr), Sk_(nullptr), dHk_1_(nullptr), dHk_2_(nullptr), A_1_(nullptr), A_2_(nullptr), A_1d_(nullptr), A_2d_(nullptr), Sz_(nullptr) {}
 
+
+  SparseMatrixType_kQuant_nonOrth_ChrisVel(int Nmoms, int norbs, int nk)
+      : Nk(0), W(0), kx(0), ky(0), kz(0), Nmoms_(Nmoms), norbs_(norbs), nk_(nk),
+          plan_fwd(nullptr), plan_bwd(nullptr),  Hk_(nullptr), Sk_(nullptr), dHk_1_(nullptr), dHk_2_(nullptr), A_1_(nullptr), A_2_(nullptr), A_1d_(nullptr), A_2d_(nullptr), Sz_(nullptr) {}
+
+
+  
     ~SparseMatrixType_kQuant_nonOrth_ChrisVel()
     {
         if (plan_fwd) { fftw_destroy_plan(plan_fwd); plan_fwd = nullptr; }
