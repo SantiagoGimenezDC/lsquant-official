@@ -94,7 +94,7 @@ int main(int argc, char *argv[])
         // disorder enters as V/a where a = HalfWidth (set below).
         // We pass the raw amplitude here; it will be rescaled after
         // BandWidth is set (see below).
-        HAM.GenerateAndersonDisorder(disorder_amplitude);
+        //HAM.GenerateAndersonDisorder(disorder_amplitude);
 	HAM.Generate_zMagneticDisorder(disorder_amplitude,disorder_concentration, 42);
 
     }
