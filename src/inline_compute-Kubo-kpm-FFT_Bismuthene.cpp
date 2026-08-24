@@ -23,7 +23,7 @@ void printWelcomeMessage();
 }
 int main(int argc, char *argv[])
 {
-	if ( !(argc == 5 || argc == 6) )
+        if ( !(argc == 7) )
 	{
 		kpmKubo::printHelpMessage();
 		return 0;
@@ -34,16 +34,19 @@ int main(int argc, char *argv[])
 	const std::string
 		LABEL = argv[1],
 	  S_NUM_MOM = argv[2],
-	  S_NUM_R= argv[3];
+	  S_NUM_R= argv[3],
+	  S_DIS_STR = argv[4],
+	  S_DIS_CONC = argv[5];
 
 	
 	const int numMoms= atoi(argv[2]);
 
-	int R = (argc >= 4) ? atoi(argv[3]) : 1;
+	int R =  atoi(argv[3]);
 	//R=1;
 	
         int num_sections = 1, nump = 4*numMoms;
-        const double disorder_amplitude = (argc >= 5) ? std::stod(argv[4]) : 0.0;
+        const double disorder_amplitude =  std::stod(argv[4]);
+	  const double disorder_concentration = std::stod(argv[5]);
 
 	chebyshev::formula sym_formula = chebyshev::KUBO_BASTIN;
 	//chebyshev::Moments Hamiltonian_dummyMoms; //load number of moments
@@ -92,7 +95,9 @@ int main(int argc, char *argv[])
         // disorder enters as V/a where a = HalfWidth (set below).
         // We pass the raw amplitude here; it will be rescaled after
         // BandWidth is set (see below).
-        HAM.GenerateAndersonDisorder(disorder_amplitude);
+        //HAM.GenerateAndersonDisorder(disorder_amplitude);
+	HAM.Generate_zMagneticDisorder(disorder_amplitude,disorder_concentration, 42);
+
     }
     else
         std::cout << "\nNo disorder (amplitude = 0)." << std::endl;
@@ -193,7 +198,7 @@ int main(int argc, char *argv[])
 	//Compute the chebyshev expansion table
 	qstates::generator gen;
 
-	std::string outputfilename="Bastin_FFT_V1-V2"+LABEL+"KPM_M"+S_NUM_MOM+"x"+S_NUM_MOM+"_state"+gen.StateLabel()+".conductivity";
+	std::string outputfilename="Bastin_FFT_V1-V2"+LABEL+"KPM_M"+S_NUM_MOM+"x"+S_NUM_MOM+"_disAmp"+S_DIS_STR+"_disConc"+S_DIS_CONC+".conductivity";
 
 	chebyshev::Kubo_solver_FFT_kQuant_nonOrth_ChrisVel solver(R, numMoms,  num_sections, nump, sym_formula, chebVec, chebVec_2,  outputfilename);
 	solver.compute(  gen );
@@ -208,7 +213,7 @@ int main(int argc, char *argv[])
 
 void kpmKubo::printHelpMessage()
 {
-	std::cout << "The program should be called with the following options: Label numMom num_states (default 1)" << std::endl
+	std::cout << "The program should be called with the following options: Label numMom num_states dis_strenght dis_concentration" << std::endl
 			  << std::endl;
 	std::cout << "Label will be used to look for Label.Ham, Label.Op1 and Label.Op2" << std::endl;
 	std::cout << "Op1 and Op2 will be used to located the sparse matrix file of two operators for the correlation" << std::endl;

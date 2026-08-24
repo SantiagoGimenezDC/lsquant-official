@@ -5,6 +5,7 @@
 #include <stdexcept>
 #include <iostream>
 #include "linear_algebra.hpp"
+#include <random>
 
 // ─────────────────────────────────────────────────────────────────────────────
 // SparseMatrixType_kQuant_nonOrth::ReadPhasesFromFile
@@ -303,11 +304,50 @@ void SparseMatrixType_kQuant_nonOrth_ChrisVel::GenerateAndersonDisorder(double a
         
       for (int alpha = 0; alpha < W; ++alpha){
 	  double v = amplitude * (static_cast<double>(std::rand()) / RAND_MAX - 0.5);
-	  disorder[iR * W + alpha] = value_t(v, 0.0);
+	  disorder[iR * 2 * W + alpha] = value_t(v, 0.0);
+	  disorder[iR * 2 * W + W + alpha] = value_t(v, 0.0);
       }
     }
     std::cout << "  Anderson disorder generated: amplitude=" << amplitude
               << ", seed=" << seed << std::endl;
+}
+
+
+
+void SparseMatrixType_kQuant_nonOrth_ChrisVel::Generate_zMagneticDisorder(
+    double strength,
+    double concentration,
+    unsigned int seed)
+{
+    disorder.resize(this->numRows());
+
+    std::mt19937 gen(seed);
+    std::uniform_real_distribution<double> dist(0.0, 1.0);
+
+    for (int iR = 0; iR < Nk; ++iR) {
+
+        // One impurity decision/value per orbital
+        for (int alpha = 0; alpha < W; ++alpha) {
+
+            double v = 0.0;
+
+            if (dist(gen) < concentration) {
+                v = strength;
+            }
+
+            // Spin-up
+            disorder[iR * 2 * W + alpha] = value_t(+v, 0.0);
+
+            // Spin-down
+            disorder[iR * 2 * W + W + alpha] = value_t(-v, 0.0);
+        }
+    }
+
+    std::cout << "  Magnetic disorder generated:"
+              << " strength=" << strength
+              << ", concentration=" << concentration
+              << ", seed=" << seed
+              << std::endl;
 }
 
 

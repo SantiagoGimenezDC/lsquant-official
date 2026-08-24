@@ -34,7 +34,8 @@ int main(int argc, char *argv[])
 	const std::string
 		LABEL = argv[1],
 	  S_NUM_MOM = argv[2],
-	  S_NUM_R= argv[3];
+	  S_NUM_R= argv[3],
+	  S_DIS_STR = argv[4];
 
 	
 	const int numMoms= atoi(argv[2]);
@@ -149,7 +150,7 @@ int main(int argc, char *argv[])
 	//Compute the chebyshev expansion table
 	qstates::generator gen;
 
-	std::string outputfilename="Bastin_FFT_V1-V2_"+LABEL+"KPM_M"+S_NUM_MOM+"x"+S_NUM_MOM+"_state"+gen.StateLabel()+".conductivity";
+	std::string outputfilename="Bastin_FFT_V1-V2_"+LABEL+"KPM_M"+S_NUM_MOM+"x"+S_NUM_MOM+"_disAmp"+S_DIS_STR+".conductivity";
 
 	
 	chebyshev::Kubo_solver_FFT_kQuant solver(R, numMoms,  num_sections, nump, sym_formula, chebVec, chebVec_2,  outputfilename);

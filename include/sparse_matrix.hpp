@@ -82,6 +82,10 @@ public:
   vector<complex<double> >* vals(){return &vals_;};
   Eigen::SparseMatrix<complex<double>, Eigen::RowMajor, indexType>& eigen_matrix(){return matrix_;};
 
+
+
+    
+    
   void set_eigen_matrix( Eigen::SparseMatrix<complex<double>, Eigen::RowMajor, indexType>& new_matrix ){
     matrix_ = new_matrix;
     setDimensions(new_matrix.rows(),new_matrix.cols());
@@ -467,8 +471,9 @@ public:
     // Fill disorder with uniform random values in [-amplitude/2, +amplitude/2]
     // per unit cell (same value for all W orbitals in a cell, standard Anderson)
     void GenerateAndersonDisorder(double amplitude, unsigned int seed = 42);
+    void Generate_zMagneticDisorder(double, double, unsigned int );
 
-    // ── I/O ──────────────────────────────────────────────────────────────────
+  // ── I/O ──────────────────────────────────────────────────────────────────
     bool ReadPhasesFromFile(const std::string& filename);
 
     // ── FFTW setup ────────────────────────────────────────────────────────────
