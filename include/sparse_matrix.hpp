@@ -207,6 +207,7 @@ public:
     // Fill disorder with uniform random values in [-amplitude/2, +amplitude/2]
     // per unit cell (same value for all W orbitals in a cell, standard Anderson)
     void GenerateAndersonDisorder(double amplitude, unsigned int seed = 42);
+    void Generate_zMagneticDisorder(double, double, unsigned int );
 
     // ── I/O ──────────────────────────────────────────────────────────────────
     bool ReadPhasesFromFile(const std::string& filename);

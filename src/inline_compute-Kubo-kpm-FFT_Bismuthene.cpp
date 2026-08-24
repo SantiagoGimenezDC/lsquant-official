@@ -23,7 +23,7 @@ void printWelcomeMessage();
 }
 int main(int argc, char *argv[])
 {
-        if ( !(argc == 7) )
+        if ( !(argc == 6) )
 	{
 		kpmKubo::printHelpMessage();
 		return 0;
