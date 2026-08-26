@@ -197,6 +197,7 @@ public:
     // disorder[iR*W + α] = on-site potential at orbital α in unit cell iR
     // Real-valued physically, but stored as complex for generality.
     std::vector<value_t> disorder;
+    Eigen::VectorXcd disorder_x,disorder_y,disorder_z;
 
     void SetDisorder(const std::vector<value_t>& dis)
     {
@@ -208,7 +209,8 @@ public:
     // per unit cell (same value for all W orbitals in a cell, standard Anderson)
     void GenerateAndersonDisorder(double amplitude, unsigned int seed = 42);
     void Generate_zMagneticDisorder(double, double, unsigned int );
-
+    void Generate_RdirMagneticDisorder(double, double, unsigned int,    const std::string& );
+  void apply_disorder(const value_t*,  value_t* );
     // ── I/O ──────────────────────────────────────────────────────────────────
     bool ReadPhasesFromFile(const std::string& filename);
 
@@ -473,6 +475,7 @@ public:
     // per unit cell (same value for all W orbitals in a cell, standard Anderson)
     void GenerateAndersonDisorder(double amplitude, unsigned int seed = 42);
     void Generate_zMagneticDisorder(double, double, unsigned int );
+    void Generate_RdirMagneticDisorder(double, double, unsigned int );
 
   // ── I/O ──────────────────────────────────────────────────────────────────
     bool ReadPhasesFromFile(const std::string& filename);

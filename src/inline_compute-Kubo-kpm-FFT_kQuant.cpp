@@ -34,18 +34,18 @@ int main(int argc, char *argv[])
 	const std::string
 		LABEL = argv[1],
 	  S_NUM_MOM = argv[2],
-	  S_NUM_R= argv[3],
+	  S_NUM_R = argv[3],
 	  S_DIS_STR = argv[4],
 	  S_DIS_CONC = argv[5];
 
 	
 	const int numMoms= atoi(argv[2]);
 
-	int R = (argc >= 4) ? atoi(argv[3]) : 1;
+	int R = atoi(argv[3]);
 	//R=1;
 	
-        int num_sections = 1, nump = 20*numMoms;
-        const double disorder_amplitude = (argc >= 5) ? std::stod(argv[4]) : 0.0;
+        int num_sections = 1, nump = 10*numMoms;
+        const double disorder_amplitude =  std::stod(argv[4]);
 	const double disorder_concentration = std::stod(argv[5]);
 
 	chebyshev::formula sym_formula = chebyshev::KUBO_BASTIN;
@@ -96,6 +96,7 @@ int main(int argc, char *argv[])
         // BandWidth is set (see below).
         //HAM.GenerateAndersonDisorder(disorder_amplitude);
 	HAM.Generate_zMagneticDisorder(disorder_amplitude,disorder_concentration, 42);
+	HAM.Generate_RdirMagneticDisorder(disorder_amplitude,disorder_concentration, 42, "operators/"+LABEL+".orbital_map.dat");
 
     }
     else

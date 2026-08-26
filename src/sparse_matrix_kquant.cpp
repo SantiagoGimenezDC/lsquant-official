@@ -337,7 +337,189 @@ void SparseMatrixType_kQuant::Generate_zMagneticDisorder(
 }
 
 
+void SparseMatrixType_kQuant::Generate_RdirMagneticDisorder(
+    double strength,
+    double concentration,
+    unsigned int seed,
+    const std::string& orbital_mapping_file)
+{
+    disorder_x.resize(this->numRows());
+    disorder_y.resize(this->numRows());
+    disorder_z.resize(this->numRows());
 
+    disorder_x.setZero();
+    disorder_y.setZero();
+    disorder_z.setZero();
+
+    // ------------------------------------------------------------
+    // Read orbital mapping for ONE unit cell
+    // ------------------------------------------------------------
+
+    struct AtomOrbitals {
+        int atom_index;
+        std::string species;
+        std::vector<int> orbitals;
+    };
+
+    std::vector<AtomOrbitals> atoms;
+
+    std::ifstream file(orbital_mapping_file);
+
+    if (!file.is_open()) {
+        throw std::runtime_error(
+            "Could not open orbital mapping file: " +
+            orbital_mapping_file);
+    }
+
+    std::string line;
+
+    while (std::getline(file, line)) {
+
+        if (line.empty() || line[0] == '#')
+            continue;
+
+        std::stringstream ss(line);
+
+        AtomOrbitals atom;
+        int norb;
+
+        ss >> atom.atom_index;
+        ss >> atom.species;
+        ss >> norb;
+
+        atom.orbitals.resize(norb);
+
+        for (int i = 0; i < norb; ++i)
+            ss >> atom.orbitals[i];
+
+        atoms.push_back(atom);
+    }
+
+    file.close();
+
+    // ------------------------------------------------------------
+    // Check that mapping agrees with W
+    // ------------------------------------------------------------
+
+    int total_orbitals = 0;
+
+    for (const auto& atom : atoms)
+        for (int orbital : atom.orbitals)
+            total_orbitals = std::max(total_orbitals, orbital + 1);
+
+    if (total_orbitals != W) {
+        throw std::runtime_error(
+            "Orbital mapping is inconsistent with W: " +
+            std::to_string(total_orbitals) +
+            " != " +
+            std::to_string(W));
+    }
+
+    // ------------------------------------------------------------
+    // Random-number generators
+    // ------------------------------------------------------------
+
+    std::mt19937 gen(seed);
+
+    std::uniform_real_distribution<double> dist(0.0, 1.0);
+    std::uniform_real_distribution<double> phi_dist(
+        0.0, 2.0 * M_PI);
+
+    int n_impurities = 0;
+
+    // ------------------------------------------------------------
+    // Generate disorder over the ENTIRE real-space supercell
+    // ------------------------------------------------------------
+
+    for (int iR = 0; iR < Nk; ++iR) {
+
+        for (const auto& atom : atoms) {
+
+            // Is this particular atom in this particular unit cell
+            // magnetic?
+            if (dist(gen) >= concentration)
+                continue;
+
+            ++n_impurities;
+
+            // ----------------------------------------------------
+            // One random spin direction for this atom
+            // ----------------------------------------------------
+
+            double cos_theta = 2.0 * dist(gen) - 1.0;
+            double sin_theta =
+                std::sqrt(1.0 - cos_theta * cos_theta);
+
+            double phi = phi_dist(gen);
+
+            double nx = sin_theta * std::cos(phi);
+            double ny = sin_theta * std::sin(phi);
+            double nz = cos_theta;
+
+            // ----------------------------------------------------
+            // Apply SAME moment to every orbital on this atom
+            // ----------------------------------------------------
+
+            for (int alpha : atom.orbitals) {
+
+                int idx = iR * W + alpha;
+
+                disorder_x[idx] =
+                    value_t(strength * nx, 0.0);
+
+                disorder_y[idx] =
+                    value_t(strength * ny, 0.0);
+
+                disorder_z[idx] =
+                    value_t(strength * nz, 0.0);
+            }
+        }
+    }
+
+    std::cout
+        << "  Random magnetic disorder generated:"
+        << " strength=" << strength
+        << " eV, concentration=" << concentration
+        << ", impurities=" << n_impurities
+        << "/" << Nk * atoms.size()
+        << " atoms, seed=" << seed
+        << std::endl;
+}
+
+
+void SparseMatrixType_kQuant::apply_disorder( const value_t* in, value_t* out)
+{
+    const value_t I(0.0, 1.0);
+
+    #pragma omp parallel for schedule(static)
+    for (int iR = 0; iR < Nk; ++iR) {
+
+        const int spatial_offset = iR * W;
+        const int spin_offset    = iR * 2 * W;
+
+        for (int alpha = 0; alpha < W; ++alpha) {
+
+            const int spatial = spatial_offset + alpha;
+
+            const int up   = spin_offset + alpha;
+            const int down = spin_offset + W + alpha;
+
+            const value_t Vx = disorder_x[spatial];
+            const value_t Vy = disorder_y[spatial];
+            const value_t Vz = disorder_z[spatial];
+
+            // H_mag = Vx*sigma_x + Vy*sigma_y + Vz*sigma_z
+
+            out[up] =
+                Vz * in[up]
+                + (Vx - I * Vy) * in[down];
+
+            out[down] =
+                (Vx + I * Vy) * in[up]
+                - Vz * in[down];
+        }
+    }
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Multiply  (overrides SparseMatrixType::Multiply)
@@ -431,16 +613,19 @@ void SparseMatrixType_kQuant::Multiply_kQuant(const value_t  a,
     if (disorder.empty()) return;
 
     // Use two separate buffers — fft_buf is used internally by both FFT functions
-    std::vector<value_t> real_buf(N);   // holds B|x⟩ in real space
+    std::vector<value_t> real_buf(N), tmp(N);   // holds B|x⟩ in real space
     std::vector<value_t> k_buf(N);      // holds B†(V·B|x⟩) in k space
 
     apply_Bdagger_FFT(real_buf.data(), x);    // real_buf = B|x⟩
 
-    for (int i = 0; i < N; ++i)
-      real_buf[i] *= disorder[i];     // real_buf = V·B|x⟩  (or -0.1 for test)
+    
+    apply_disorder(real_buf.data(),tmp.data());
+    
+    //for (int i = 0; i < N; ++i)
+       //real_buf[i] *= disorder[i];     // real_buf = V·B|x⟩  (or -0.1 for test)
       
     
-    apply_B_FFT(k_buf.data(), real_buf.data());  // k_buf = B†V·B|x⟩
+    apply_B_FFT(k_buf.data(), tmp.data());  // k_buf = B†V·B|x⟩
 
     
     for (int i = 0; i < N; ++i)
