@@ -442,13 +442,14 @@ void SparseMatrixType_kQuant::Generate_RdirMagneticDisorder(
 
             ++n_impurities;
 
+	    
             // ----------------------------------------------------
             // One random spin direction for this atom
             // ----------------------------------------------------
 
             double cos_theta = 2.0 * dist(gen) - 1.0;
             double sin_theta =
-                std::sqrt(1.0 - cos_theta * cos_theta);
+	    std::sqrt(1.0 - cos_theta * cos_theta);
 
             double phi = phi_dist(gen);
 
@@ -456,6 +457,39 @@ void SparseMatrixType_kQuant::Generate_RdirMagneticDisorder(
             double ny = sin_theta * std::sin(phi);
             double nz = cos_theta;
 
+	    
+
+
+
+	    /*
+	    // ----------------------------------------------------
+	    // One random spin direction for this atom, biased toward +z.
+	    // Sampled from a von Mises-Fisher distribution on the sphere:
+	    // kappa = 0 recovers your original isotropic sampling; larger
+	    // kappa concentrates directions more tightly around +z, i.e.
+	    // increasingly resembles a coherent exchange field rather than
+	    // pure random-direction disorder.
+	    // ----------------------------------------------------
+	    const double kappa = 3.0; // tune: 0 = isotropic, larger = stronger +z bias
+
+	    double xi = dist(gen); // uniform in [0,1)
+	    double cos_theta;
+	    if (kappa > 1e-8) {
+	      cos_theta = 1.0 + (1.0 / kappa) *
+                std::log(xi + (1.0 - xi) * std::exp(-2.0 * kappa));
+	    } else {
+	      cos_theta = 2.0 * xi - 1.0; // isotropic fallback, same as before
+	    }
+
+	    double sin_theta =
+	      std::sqrt(std::max(0.0, 1.0 - cos_theta * cos_theta)); // guard tiny FP negatives
+	    double phi = phi_dist(gen);
+	    double nx = sin_theta * std::cos(phi);
+	    double ny = sin_theta * std::sin(phi);
+	    double nz = cos_theta;
+	    */
+
+ 
             // ----------------------------------------------------
             // Apply SAME moment to every orbital on this atom
             // ----------------------------------------------------
@@ -497,7 +531,9 @@ void SparseMatrixType_kQuant::apply_disorder( const value_t* in, value_t* out)
         const int spatial_offset = iR * W;
         const int spin_offset    = iR * 2 * W;
 
+	  
         for (int alpha = 0; alpha < W; ++alpha) {
+
 
             const int spatial = spatial_offset + alpha;
 
@@ -510,6 +546,7 @@ void SparseMatrixType_kQuant::apply_disorder( const value_t* in, value_t* out)
 
             // H_mag = Vx*sigma_x + Vy*sigma_y + Vz*sigma_z
 
+	    
             out[up] =
                 Vz * in[up]
                 + (Vx - I * Vy) * in[down];
@@ -519,7 +556,119 @@ void SparseMatrixType_kQuant::apply_disorder( const value_t* in, value_t* out)
                 - Vz * in[down];
         }
     }
+
 }
+
+
+
+
+
+
+
+
+
+void SparseMatrixType_kQuant::Multiply_kQuant(const value_t  a,
+                                               const value_t* x,
+                                                     value_t  b,
+                                                     value_t* y)
+{
+    const int N = 2*Nk * W;
+
+
+    SparseMatrixType::Multiply(a, x, b, y);
+
+    if (disorder_x.size()==0 && disorder.empty()) return;
+
+    // Use two separate buffers — fft_buf is used internally by both FFT functions
+    //std::vector<value_t> real_buf(N), tmp(N);   // holds B|x⟩ in real space
+    //std::vector<value_t> k_buf(N);      // holds B†(V·B|x⟩) in k space
+
+
+    Eigen::Map< const Eigen::Vector<std::complex<double>, -1>>  x_eig(x, N);
+    //Eigen::Map< Eigen::Vector<std::complex<double>, -1>>  y_eig(y, N);
+   
+    Eigen::Vector<std::complex<double>, -1> real_buf( N ), k_buf( N ), tmp( N );
+
+  
+    apply_Bdagger_FFT(real_buf.data(), x);    // real_buf = B|x⟩
+    
+    //apply_disorder(real_buf.data(),tmp.data()); //MAGNETIC DISORDER
+
+    for (int i = 0; i < N; ++i)
+       real_buf[i] *= disorder[i];     // real_buf = V·B|x⟩  (or -0.1 for test)
+      
+
+    apply_B_FFT(k_buf.data(), real_buf.data());  // k_buf = B†V·B|x⟩
+
+
+    
+      
+    for (int i = 0; i < N; ++i){
+
+      y[i] += a * k_buf[i];
+    }
+
+    
+}
+
+
+/*
+void SparseMatrixType_kQuant::Multiply_kQuant(const value_t  a,
+                                               const value_t* x,
+                                                     value_t  b,
+                                                     value_t* y)
+{
+    const int N = Nk * W;
+
+
+    SparseMatrixType::Multiply(a, x, b, y);
+
+    if (disorder_x.size()==0 && disorder.empty()) return;
+
+    // Use two separate buffers — fft_buf is used internally by both FFT functions
+    std::vector<value_t> real_buf(N), tmp(N);   // holds B|x⟩ in real space
+    std::vector<value_t> k_buf(N);      // holds B†(V·B|x⟩) in k space
+
+    apply_Bdagger_FFT(real_buf.data(), x);    // real_buf = B|x⟩
+
+    
+    apply_disorder(real_buf.data(),tmp.data());
+    
+    //for (int i = 0; i < N; ++i)
+       //real_buf[i] *= disorder[i];     // real_buf = V·B|x⟩  (or -0.1 for test)
+      
+    
+    apply_B_FFT(k_buf.data(), tmp.data());  // k_buf = B†V·B|x⟩
+
+    
+    for (int i = 0; i < N; ++i)
+        y[i] += a * k_buf[i];
+
+    
+}
+*/
+
+
+
+
+
+void SparseMatrixType_kQuant::Multiply_kQuant(const value_t  a,
+                                        const vector_t& x,
+                                              value_t   b,
+                                              vector_t& y)
+{
+
+
+  SparseMatrixType_kQuant::Multiply_kQuant(a, x.data(), b, y.data());
+
+}
+
+
+
+
+
+
+
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Multiply  (overrides SparseMatrixType::Multiply)
@@ -568,7 +717,7 @@ void SparseMatrixType_kQuant::Multiply_kQuant_bak(const value_t  a,
 
 
 
-    // Step 4: FFTW_BACKWARD  →  unnormalised real→k transform
+    // Step 4: FFTW_BACKWARD  →  unnormalised real→ k transform
     fftw_execute(plan_bwd);
 
 
@@ -585,57 +734,6 @@ void SparseMatrixType_kQuant::Multiply_kQuant_bak(const value_t  a,
 }
 
 void SparseMatrixType_kQuant::Multiply_kQuant_bak(const value_t  a,
-                                        const vector_t& x,
-                                              value_t   b,
-                                              vector_t& y)
-{
-    SparseMatrixType_kQuant::Multiply_kQuant(a, x.data(), b, y.data());
-}
-
-
-
-
-
-
-
-
-
-void SparseMatrixType_kQuant::Multiply_kQuant(const value_t  a,
-                                               const value_t* x,
-                                                     value_t  b,
-                                                     value_t* y)
-{
-    const int N = Nk * W;
-
-
-    SparseMatrixType::Multiply(a, x, b, y);
-
-    if (disorder.empty()) return;
-
-    // Use two separate buffers — fft_buf is used internally by both FFT functions
-    std::vector<value_t> real_buf(N), tmp(N);   // holds B|x⟩ in real space
-    std::vector<value_t> k_buf(N);      // holds B†(V·B|x⟩) in k space
-
-    apply_Bdagger_FFT(real_buf.data(), x);    // real_buf = B|x⟩
-
-    
-    apply_disorder(real_buf.data(),tmp.data());
-    
-    //for (int i = 0; i < N; ++i)
-       //real_buf[i] *= disorder[i];     // real_buf = V·B|x⟩  (or -0.1 for test)
-      
-    
-    apply_B_FFT(k_buf.data(), tmp.data());  // k_buf = B†V·B|x⟩
-
-    
-    for (int i = 0; i < N; ++i)
-        y[i] += a * k_buf[i];
-
-    
-}
-
-
-void SparseMatrixType_kQuant::Multiply_kQuant(const value_t  a,
                                         const vector_t& x,
                                               value_t   b,
                                               vector_t& y)

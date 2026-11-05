@@ -210,7 +210,7 @@ public:
     void GenerateAndersonDisorder(double amplitude, unsigned int seed = 42);
     void Generate_zMagneticDisorder(double, double, unsigned int );
     void Generate_RdirMagneticDisorder(double, double, unsigned int,    const std::string& );
-  void apply_disorder(const value_t*,  value_t* );
+    void apply_disorder(const value_t*,  value_t* );
     // ── I/O ──────────────────────────────────────────────────────────────────
     bool ReadPhasesFromFile(const std::string& filename);
 
@@ -232,6 +232,7 @@ public:
     void Multiply_kQuant_bak(const value_t , const value_t *, const value_t , value_t * ) ;
     void Multiply_kQuant_bak(const value_t , const vector_t& , const value_t , vector_t& );
 
+    void set_S_sqrt_inv(Eigen::SparseMatrix<complex<double>, Eigen::RowMajor, indexType>* new_S_sqrt_inv){  S_sqrt_inv_ = new_S_sqrt_inv;   }
   
   //  virtual  void Multiply(const value_t , const value_t*,  const value_t ,       value_t*   ) override;
   //virtual void Multiply(const value_t , const vector_t&  , const value_t ,       vector_t&  ) override;
@@ -245,7 +246,9 @@ public:
   
 private:
     // Working buffer for the disorder application (size Nk*W, FFTW-aligned)
-    std::vector<value_t> fft_buf;
+  Eigen::SparseMatrix<complex<double>, Eigen::RowMajor, indexType>* S_sqrt_inv_;
+
+  std::vector<value_t> fft_buf;
     fftw_plan            plan_fwd;   // B†: k→real  (FFTW_FORWARD)
     fftw_plan            plan_bwd;   // B:  real→k  (FFTW_BACKWARD)
 
@@ -566,7 +569,7 @@ duplicate_spin_blocks(
 
     Sk_ = new_S;
 
-    //M_ = new IschoPreconditioner_block<indexType>(25,92);
+    //M_ = new IschoPreconditioner_block<indexType>(6400,92);
     M_ =  new ChebyshevSInvPreconditioner<indexType>(nk_, 2*norbs_,  2*Nmoms_);
     M_->compute(Sk_);
 

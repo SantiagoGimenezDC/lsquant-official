@@ -23,7 +23,7 @@ void printWelcomeMessage();
 }
 int main(int argc, char *argv[])
 {
-	if ( !( argc == 6) )
+	if ( !( argc == 5) )
 	{
 		kpmKubo::printHelpMessage();
 		return 0;
@@ -35,8 +35,8 @@ int main(int argc, char *argv[])
 		LABEL = argv[1],
 	  S_NUM_MOM = argv[2],
 	  S_NUM_R = argv[3],
-	  S_DIS_STR = argv[4],
-	  S_DIS_CONC = argv[5];
+	  S_DIS_STR = argv[4];
+	  //S_DIS_CONC = argv[5];
 
 	
 	const int numMoms= atoi(argv[2]);
@@ -46,7 +46,7 @@ int main(int argc, char *argv[])
 	
         int num_sections = 1, nump = 10*numMoms;
         const double disorder_amplitude =  std::stod(argv[4]);
-	const double disorder_concentration = std::stod(argv[5]);
+	//const double disorder_concentration = std::stod(argv[5]);
 
 	chebyshev::formula sym_formula = chebyshev::KUBO_BASTIN;
 	//chebyshev::Moments Hamiltonian_dummyMoms; //load number of moments
@@ -94,9 +94,9 @@ int main(int argc, char *argv[])
         // disorder enters as V/a where a = HalfWidth (set below).
         // We pass the raw amplitude here; it will be rescaled after
         // BandWidth is set (see below).
-        //HAM.GenerateAndersonDisorder(disorder_amplitude);
-	HAM.Generate_zMagneticDisorder(disorder_amplitude,disorder_concentration, 42);
-	HAM.Generate_RdirMagneticDisorder(disorder_amplitude,disorder_concentration, 42, "operators/"+LABEL+".orbital_map.dat");
+        HAM.GenerateAndersonDisorder(disorder_amplitude);
+	//HAM.Generate_zMagneticDisorder(disorder_amplitude,disorder_concentration, 100042);
+	//HAM.Generate_RdirMagneticDisorder(disorder_amplitude,disorder_concentration, 3042, "operators/"+LABEL+".orbital_map.dat");
 
     }
     else
@@ -105,17 +105,24 @@ int main(int argc, char *argv[])
 
     
     {
-        std::string input = "operators/" + LABEL + ".VX.CSR";
+        std::string input = "operators/" + LABEL + ".SZVY.CSR";
         builder.setSparseMatrix(&OP_V1);
         builder.BuildOPFromCSRFile(input);
     }
     
     {
-        std::string input = "operators/" + LABEL + ".SZVY.CSR";
+        std::string input = "operators/" + LABEL + ".VX.CSR";
         builder.setSparseMatrix(&OP_V2);
         builder.BuildOPFromCSRFile(input);
     }
-    
+
+    /*
+    {
+        std::string input = "operators/" + LABEL + ".S_inv.CSR";
+        builder.setSparseMatrix(&OP_V3);
+        builder.BuildOPFromCSRFile(input);
+    }
+    */
 
      
     // ── Configure Chebyshev moments ───────────────────────────────────────────
@@ -131,6 +138,14 @@ int main(int argc, char *argv[])
         std::cout << "Rescaling disorder by 1/a = " << 1.0/a << std::endl;
         for (auto& v : HAM.disorder)
 	  v /= a;  ///= a;
+	
+        for (auto& v : HAM.disorder_x)
+	  v /= a;  ///= a;
+        for (auto& v : HAM.disorder_y)
+	  v /= a;  ///= a;
+        for (auto& v : HAM.disorder_z)
+	  v /= a;  ///= a;
+
     }
    
 	//CONFIGURE THE CHEBYSHEV MOMENTS
@@ -149,13 +164,16 @@ int main(int argc, char *argv[])
 
 
 	
+	//HAM.set_S_sqrt_inv(OP_V3.Matrix());
+
+	
 	//Define thes states youll use
 	//Factory state_factory ;
 
 	//Compute the chebyshev expansion table
 	qstates::generator gen;
 
-	std::string outputfilename="Bastin_FFT_V1-V2_"+LABEL+"KPM_M"+S_NUM_MOM+"x"+S_NUM_MOM+"_disAmp"+S_DIS_STR+"_disConc"+S_DIS_CONC+".conductivity";
+	std::string outputfilename="Bastin_FFT_V1-V2_"+LABEL+"KPM_M"+S_NUM_MOM+"x"+S_NUM_MOM+"_disAmp"+S_DIS_STR+"_Anderson.conductivity";
 
 	
 	chebyshev::Kubo_solver_FFT_kQuant solver(R, numMoms,  num_sections, nump, sym_formula, chebVec, chebVec_2,  outputfilename);

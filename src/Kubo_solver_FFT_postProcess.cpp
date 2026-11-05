@@ -134,11 +134,13 @@ void Kubo_solver_FFT_postProcess::Bastin_postProcess(const value_t final_data[],
     b = parent_solver_.Hamiltonian().BandCenter();
     //    sysSubLength = device_.sysSubLength();
   
-  r_value_t omega = DIM/( a * a  );//* sysSubLength * sysSubLength );//Dimensional and normalizing constant
+  //r_value_t omega = DIM/( a * a  ) * sysSubLength * sysSubLength );//Dimensional and normalizing constant
 
 
-  r_value_t prefactor = 2.0 / ( M_PI * a * a * 6.776230343080986e-06 ); //omega/M_PI;
-  //r_value_t tmp, max=0, av=0;
+  r_value_t prefactor = ( 2.0 /* M_PI */ ) */*2 converts spin op definition from Chris's to Jose's*/
+                        DIM / 6400 * /* DIM un-normalizes the randVec, and 6400 is the number of k-Points*/
+                        1.0 / (a * a * 6.776230343080986e-06 ); /* a re-dimensionalizes the kubo formula, and 6.77623.. converts Chris's units to e^2/h*/
+  
 
   r_value_t
     rearranged_E_points[nump],
@@ -192,11 +194,11 @@ void Kubo_solver_FFT_postProcess::Bastin_postProcess(const value_t final_data[],
   for(int k = 0; k < nump; k++){
     integrand[k]  = E_points_[k] * real( final_data[ k ] ) - ( sqrt(1.0 - E_points_[ k ] * E_points_[ k ] ) * imag( final_data[ k + nump ] ) );
     integrand[k] *= 1.0 / pow( (1.0 - E_points_[k]  * E_points_[k] ), 2.0);
-    integrand[k] *=  prefactor * omega ; 
+    integrand[k] *=  prefactor ; 
 
     rvec_integrand[k]  = E_points_[k] * real( r_data[ k ] ) - ( sqrt(1.0 - E_points_[ k ] * E_points_[ k ] ) * real( r_data[ k + nump ] ) );
     rvec_integrand[k] *= 1.0 / pow( (1.0 - E_points_[k]  * E_points_[k] ), 2.0);
-    rvec_integrand[k] *=  prefactor *  omega ; 
+    rvec_integrand[k] *=  prefactor ; 
   }
 
   rearrange_crescent_order(integrand);
@@ -592,12 +594,12 @@ void Kubo_solver_FFT_postProcess_dup::Bastin_postProcess(const value_t final_dat
     b = parent_solver_.Hamiltonian().BandCenter();
     //    sysSubLength = device_.sysSubLength();
   
-  r_value_t omega = DIM/( a * a  );//* sysSubLength * sysSubLength );//Dimensional and normalizing constant
+  //r_value_t omega = DIM/( a * a  );//* sysSubLength * sysSubLength );//Dimensional and normalizing constant
 
-
-  r_value_t prefactor = 2.0 / ( M_PI * a * a * 6.776230343080986e-06 ); //omega/M_PI;
-  //r_value_t tmp, max=0, av=0;
-
+  r_value_t prefactor = ( 2.0 / M_PI ) */*2 converts spin op definition from Chris's to Jose's*/
+                        DIM / 6400 * /* DIM un-normalizes the randVec, and 6400 is the number of k-Points*/
+                        1.0 / (a * a * 6.776230343080986e-06 ); /* a re-dimensionalizes the kubo formula, and 6.77623.. converts Chris's units to e^2/h*/
+  
   r_value_t
     rearranged_E_points[nump],
     integrand[nump],
@@ -650,11 +652,11 @@ void Kubo_solver_FFT_postProcess_dup::Bastin_postProcess(const value_t final_dat
   for(int k = 0; k < nump; k++){
     integrand[k]  = E_points_[k] * real( final_data[ k ] ) - ( sqrt(1.0 - E_points_[ k ] * E_points_[ k ] ) * imag( final_data[ k + nump ] ) );
     integrand[k] *= 1.0 / pow( (1.0 - E_points_[k]  * E_points_[k] ), 2.0);
-    integrand[k] *=  prefactor * omega ; 
+    integrand[k] *=  prefactor ; 
 
     rvec_integrand[k]  = E_points_[k] * real( r_data[ k ] ) - ( sqrt(1.0 - E_points_[ k ] * E_points_[ k ] ) * real( r_data[ k + nump ] ) );
     rvec_integrand[k] *= 1.0 / pow( (1.0 - E_points_[k]  * E_points_[k] ), 2.0);
-    rvec_integrand[k] *=  prefactor *  omega ; 
+    rvec_integrand[k] *=  prefactor ; 
   }
 
   rearrange_crescent_order(integrand);
@@ -1036,11 +1038,12 @@ void Kubo_solver_FFT_postProcess_dup_dup::Bastin_postProcess(const value_t final
     b = parent_solver_.Hamiltonian().BandCenter();
     //    sysSubLength = device_.sysSubLength();
   
-  r_value_t omega = DIM/( a * a  );//* sysSubLength * sysSubLength );//Dimensional and normalizing constant
+  //r_value_t omega = DIM/( a * a  );//* sysSubLength * sysSubLength );//Dimensional and normalizing constant
 
 
-  r_value_t prefactor = 2.0 / ( M_PI * a * a * 6.776230343080986e-06 ); //omega/M_PI;
-  //r_value_t tmp, max=0, av=0;
+  r_value_t prefactor = ( 2.0 /* M_PI */ ) * /*2 converts spin op definition from Chris's to Jose's*/
+                        DIM / 6400 * /* DIM un-normalizes the randVec, and 6400 is the number of k-Points*/
+                        1.0 / (a * a * 6.776230343080986e-06 ); /* a re-dimensionalizes the kubo formula, and 6.77623.. converts Chris's units to e^2/h*/
 
   r_value_t
     rearranged_E_points[nump],
@@ -1094,11 +1097,11 @@ void Kubo_solver_FFT_postProcess_dup_dup::Bastin_postProcess(const value_t final
   for(int k = 0; k < nump; k++){
     integrand[k]  = E_points_[k] * real( final_data[ k ] ) - ( sqrt(1.0 - E_points_[ k ] * E_points_[ k ] ) * imag( final_data[ k + nump ] ) );
     integrand[k] *= 1.0 / pow( (1.0 - E_points_[k]  * E_points_[k] ), 2.0);
-    integrand[k] *=  prefactor * omega ; 
+    integrand[k] *=  prefactor ; 
 
     rvec_integrand[k]  = E_points_[k] * real( r_data[ k ] ) - ( sqrt(1.0 - E_points_[ k ] * E_points_[ k ] ) * real( r_data[ k + nump ] ) );
     rvec_integrand[k] *= 1.0 / pow( (1.0 - E_points_[k]  * E_points_[k] ), 2.0);
-    rvec_integrand[k] *=  prefactor *  omega ; 
+    rvec_integrand[k] *=  prefactor  ; 
   }
 
   rearrange_crescent_order(integrand);
@@ -1478,11 +1481,12 @@ void Kubo_solver_FFT_postProcess_dup_dup_dup::Bastin_postProcess(const value_t f
     b = parent_solver_.Hamiltonian().BandCenter();
     //    sysSubLength = device_.sysSubLength();
   
-  r_value_t omega = DIM/( a * a  );//* sysSubLength * sysSubLength );//Dimensional and normalizing constant
+  //r_value_t omega = DIM/( a * a  );//* sysSubLength * sysSubLength );//Dimensional and normalizing constant
 
 
-  r_value_t prefactor = 2.0 / ( M_PI * a * a * 6.776230343080986e-06 ); //omega/M_PI;
-  //r_value_t tmp, max=0, av=0;
+  r_value_t prefactor = ( 2.0  /* M_PI */ ) */*2 converts spin op definition from Chris's to Jose's*/
+                        DIM / 6400 * /* DIM un-normalizes the randVec, and 6400 is the number of k-Points*/
+                        1.0 / (a * a * 6.776230343080986e-06 ); /* a re-dimensionalizes the kubo formula, and 6.77623.. converts Chris's units to e^2/h*/
 
   r_value_t
     rearranged_E_points[nump],
@@ -1536,11 +1540,11 @@ void Kubo_solver_FFT_postProcess_dup_dup_dup::Bastin_postProcess(const value_t f
   for(int k = 0; k < nump; k++){
     integrand[k]  = E_points_[k] * real( final_data[ k ] ) - ( sqrt(1.0 - E_points_[ k ] * E_points_[ k ] ) * imag( final_data[ k + nump ] ) );
     integrand[k] *= 1.0 / pow( (1.0 - E_points_[k]  * E_points_[k] ), 2.0);
-    integrand[k] *=  prefactor * omega ; 
+    integrand[k] *=  prefactor ; 
 
     rvec_integrand[k]  = E_points_[k] * real( r_data[ k ] ) - ( sqrt(1.0 - E_points_[ k ] * E_points_[ k ] ) * real( r_data[ k + nump ] ) );
     rvec_integrand[k] *= 1.0 / pow( (1.0 - E_points_[k]  * E_points_[k] ), 2.0);
-    rvec_integrand[k] *=  prefactor *  omega ; 
+    rvec_integrand[k] *=  prefactor ; 
   }
 
   rearrange_crescent_order(integrand);
