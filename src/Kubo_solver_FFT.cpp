@@ -480,10 +480,11 @@ void Kubo_solver_FFT_kQuant::compute( SparseMatrixType & OP1, SparseMatrixType &
 
   //Allocate the memory
   
-  value_t
-    prev_r_data[2*nump_],
-    r_data[2*nump_],
-    final_data[2*nump_];	
+  // Heap storage: as stack VLAs these are 2*nump_*16 B each and overflow
+  // the default 8 MB stack for large M (nump_ = 10*M).
+  std::vector<value_t>
+    r_data(2*nump_, value_t(0.0)),
+    final_data(2*nump_, value_t(0.0));
 
   allocate(*chebVecL_, *chebVecR_);
 
@@ -510,7 +511,7 @@ void Kubo_solver_FFT_kQuant::compute( SparseMatrixType & OP1, SparseMatrixType &
     gen.SystemSize(DIM);
     gen.getQuantumState();    
     //SELECT RUNNING TYPE
-    polynomial_recursion( gen.State(),gen.State(), OP1, OP2, chebVecL_,chebVecR_, r_data);
+    polynomial_recursion( gen.State(),gen.State(), OP1, OP2, chebVecL_,chebVecR_, r_data.data());
 
     randVec_time.stop("       Total RandVec time:         ");
     std::cout<<std::endl;
@@ -521,8 +522,8 @@ void Kubo_solver_FFT_kQuant::compute( SparseMatrixType & OP1, SparseMatrixType &
      time_station time_postProcess;
 
 
-     update_data(final_data, r_data, r+1);
-     postProcess(final_data, r_data, r+1);
+     update_data(final_data.data(), r_data.data(), r+1);
+     postProcess(final_data.data(), r_data.data(), r+1);
 
 
      /*
@@ -533,12 +534,7 @@ void Kubo_solver_FFT_kQuant::compute( SparseMatrixType & OP1, SparseMatrixType &
 
 
      
-     for(int i=0;i<2*nump_;i++)
-       prev_r_data[i] = r_data[i];
-
-
-     
-     reset_data(r_data);
+     reset_data(r_data.data());
 
 
      r++;

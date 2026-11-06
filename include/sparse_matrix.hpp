@@ -201,7 +201,7 @@ public:
 
     void SetDisorder(const std::vector<value_t>& dis)
     {
-        assert((int)dis.size() == Nk * W);
+        assert((int)dis.size() == Nk * W || (int)dis.size() == this->rank()); // shared by both spins, or full size
         disorder = dis;
     }
 
@@ -248,9 +248,17 @@ private:
     // Working buffer for the disorder application (size Nk*W, FFTW-aligned)
   Eigen::SparseMatrix<complex<double>, Eigen::RowMajor, indexType>* S_sqrt_inv_;
 
+  // Size Nk*Bs, where Bs = rank()/Nk is the full per-k block (W, or 2W if spinful).
   std::vector<value_t> fft_buf;
     fftw_plan            plan_fwd;   // B†: k→real  (FFTW_FORWARD)
     fftw_plan            plan_bwd;   // B:  real→k  (FFTW_BACKWARD)
+
+    // Per-k block size used by the FFT path (W for spinless, 2W for spinful).
+    // Spinful layout assumed: index = ik*2W + spin*W + α (same convention as
+    // Generate_zMagneticDisorder / apply_disorder).
+    int Bs = 0;
+    // atom_phases expanded to the full Nk*Bs layout (spin copies share the phase).
+    std::vector<value_t> atom_phases_full;
 
     inline value_t lattice_phase(int ik, int iR) const
     {

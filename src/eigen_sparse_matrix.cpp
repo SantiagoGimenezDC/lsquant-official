@@ -171,7 +171,22 @@ void SparseMatrixType::Multiply(const complex<double> a, const complex<double> *
 
 
 
-	eig_y = a * matrix_ * eig_x + b * eig_y; 
+	if( x == y ) {
+	  // Aliased input/output: let Eigen go through a temporary.
+	  eig_y = a * matrix_ * eig_x + b * eig_y;
+	  return;
+	}
+
+	// Accumulate straight into y instead of building the product in a
+	// full-length temporary on every call. b == 0 also stops stale/NaN
+	// content of an uninitialised y from leaking in via 0*y.
+	if( b == complex<double>(0.0, 0.0) )
+	  eig_y.noalias() = a * (matrix_ * eig_x);
+	else {
+	  if( b != complex<double>(1.0, 0.0) )
+	    eig_y *= b;
+	  eig_y.noalias() += a * (matrix_ * eig_x);
+	}
 
 
 	  

@@ -739,6 +739,20 @@ int chebyshev::Vectors_sliced_kQuant::MultiplySliced(SparseMatrixType &OP,  int 
     segment_start = s * section_size_,
     DIM = this->SystemSize();
 
+  // Single section: every stored vector is full length, so multiply it
+  // directly into a scratch vector and swap (no zeroing, no copies).
+  if( num_sections_ == 1 && this->NumberOfVectors() > 0 &&
+      Chebmu_.ListElem(0).size() == DIM )
+  {
+	Moments::vector_t tmp(DIM);
+	for(int m=0; m < this->NumberOfVectors(); m++ )
+	{
+	  OP.Multiply(1.0, Chebmu_.ListElem(m), 0.0, tmp);
+	  Chebmu_.ListElem(m).swap(tmp);
+	}
+	return 0;
+  }
+
   Moments::vector_t tmp1(this->SystemSize()), tmp2(this->SystemSize());
 
 
@@ -748,13 +762,13 @@ int chebyshev::Vectors_sliced_kQuant::MultiplySliced(SparseMatrixType &OP,  int 
 	  tmp2[i] = 0.0;
 	}
 
-	
+
 	for(int m=0; m < this->NumberOfVectors(); m++ )
 	{
 	  linalg::introduce_segment(Chebmu_.ListElem(m), tmp1, segment_start);
 	  //this->Hamiltonian().vel_i_nonOrth(tmp1.data(),tmp2.data(), 2);
 	  OP.Multiply(1.0,tmp1,0.0, tmp2); //Multiply(  OPV(), tmp2 );
-	  linalg::extract_segment(tmp2, segment_start,  Chebmu_.ListElem(m));	  
+	  linalg::extract_segment(tmp2, segment_start,  Chebmu_.ListElem(m));
 	}
 
 	return 0;

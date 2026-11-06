@@ -5,6 +5,25 @@
 #include <stdexcept>
 #include <iostream>
 #include <random>
+#include <algorithm>
+#include <omp.h>
+
+namespace {
+// Plain real-arithmetic complex products. Without -ffast-math /
+// -fcx-limited-range, GCC compiles std::complex * std::complex into a
+// call to __muldc3 (NaN/Inf checks), which is slow in hot loops.
+inline std::complex<double> kq_cmul(const std::complex<double> a, const std::complex<double> b)
+{
+    return { a.real() * b.real() - a.imag() * b.imag(),
+             a.real() * b.imag() + a.imag() * b.real() };
+}
+// conj(a) * b
+inline std::complex<double> kq_cmul_conj(const std::complex<double> a, const std::complex<double> b)
+{
+    return { a.real() * b.real() + a.imag() * b.imag(),
+             a.real() * b.imag() - a.imag() * b.real() };
+}
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // SparseMatrixType_kQuant::ReadPhasesFromFile
@@ -157,14 +176,19 @@ void SparseMatrixType_kQuant::apply_B_FFT( value_t* out, const value_t* in)
 	}*/
 void SparseMatrixType_kQuant::apply_B_FFT(value_t* out, const value_t* in)
 {
-    const int N = Nk * W;
+    const int N = Nk * Bs;
+    value_t* buf = fft_buf.data();
+    const value_t* ph = atom_phases_full.data();
+
+    #pragma omp parallel for schedule(static)
     for (int i = 0; i < N; ++i)
-        fft_buf[i] = in[i];
+        buf[i] = in[i];
 
     fftw_execute(plan_bwd);   // computes exact lattice sum, no normalization
 
+    #pragma omp parallel for schedule(static)
     for (int i = 0; i < N; ++i)
-        out[i] = atom_phases[i] * fft_buf[i];   // atom_phases already has 1/√Nk
+        out[i] = kq_cmul(ph[i], buf[i]);   // atom_phases already has 1/√Nk
 }
 
 
@@ -197,17 +221,21 @@ void SparseMatrixType_kQuant::apply_Bdagger(value_t* out, const value_t* in) con
 
 void SparseMatrixType_kQuant::apply_Bdagger_FFT(value_t* out, const value_t* in)
 {
-    const int N = Nk * W;
+    const int N = Nk * Bs;
+    value_t* buf = fft_buf.data();
+    const value_t* ph = atom_phases_full.data();
 
     // premultiply by conj(atom_phases)  (first part of B†)
+    #pragma omp parallel for schedule(static)
     for (int i = 0; i < N; ++i)
-        fft_buf[i] = std::conj(atom_phases[i]) * in[i];
+        buf[i] = kq_cmul_conj(ph[i], in[i]);
 
     // FORWARD FFT: exp(-i·2π·k·n/N)  →  completes B†, no normalisation needed
     fftw_execute(plan_fwd);
 
+    #pragma omp parallel for schedule(static)
     for (int i = 0; i < N; ++i)
-        out[i] = fft_buf[i];
+        out[i] = buf[i];
 }
 
 /*
@@ -245,32 +273,64 @@ void SparseMatrixType_kQuant::apply_Bdagger_FFT( value_t* out, const value_t* in
 // ─────────────────────────────────────────────────────────────────────────────
 void SparseMatrixType_kQuant::PrepareFFT()
 {
-    const int N = Nk * W;
-    // Allocate FFTW-aligned buffer so SIMD paths are used
-    fft_buf.resize(N);
+    // Full per-k block: W (spinless) or 2W (spinful, layout ik*2W + s*W + α).
+    if (this->rank() % Nk != 0)
+        throw std::runtime_error("SparseMatrixType_kQuant: rank() is not a multiple of Nk");
+    Bs = this->rank() / Nk;
+    if (Bs % W != 0)
+        throw std::runtime_error("SparseMatrixType_kQuant: per-k block size is not a multiple of W");
+    if (Bs != W)
+        std::cout << "  Per-k block = " << Bs << " = " << Bs / W << " x W"
+                  << " (assuming layout ik*Bs + spin*W + alpha)" << std::endl;
+
+    const int N = Nk * Bs;
+    fft_buf.assign(N, value_t(0.0, 0.0));
+
+    // Expand the atom phases once so the hot loops index them linearly.
+    atom_phases_full.resize(N);
+    for (int ik = 0; ik < Nk; ++ik)
+        for (int j = 0; j < Bs; ++j)
+            atom_phases_full[ik * Bs + j] = atom_phases[ik * W + j % W];
+
+    // Multi-threaded FFTW for the 3D batch transforms (we link -lfftw3_omp).
+    static bool fftw_threads_ready = false;
+    if (!fftw_threads_ready) {
+        fftw_init_threads();
+        fftw_threads_ready = true;
+    }
+    fftw_plan_with_nthreads(omp_get_max_threads());
 
     int n[3]       = {kx, ky, kz};
     fftw_complex* buf = reinterpret_cast<fftw_complex*>(fft_buf.data());
 
-    // Both plans operate in-place on buf with stride=W between elements of
+    // Both plans operate in-place on buf with stride=Bs between elements of
     // the same transform and distance=1 between consecutive transforms.
+    // Plans are built once, so FFTW_MEASURE pays off (it overwrites buf,
+    // which is why buf is (re)zeroed afterwards).
     plan_fwd = fftw_plan_many_dft(
-        3, n, W,
-        buf, nullptr, W, 1,
-        buf, nullptr, W, 1,
-        FFTW_FORWARD,  FFTW_ESTIMATE);
+        3, n, Bs,
+        buf, nullptr, Bs, 1,
+        buf, nullptr, Bs, 1,
+        FFTW_FORWARD,  FFTW_MEASURE);
 
     plan_bwd = fftw_plan_many_dft(
-        3, n, W,
-        buf, nullptr, W, 1,
-        buf, nullptr, W, 1,
-        FFTW_BACKWARD, FFTW_ESTIMATE);
+        3, n, Bs,
+        buf, nullptr, Bs, 1,
+        buf, nullptr, Bs, 1,
+        FFTW_BACKWARD, FFTW_MEASURE);
+
+    // Later plans (e.g. the per-thread 1D FFTs of the Kubo solver) must be
+    // single-threaded: they are executed from inside OpenMP regions.
+    fftw_plan_with_nthreads(1);
 
     if (!plan_fwd || !plan_bwd)
         throw std::runtime_error("SparseMatrixType_kQuant: FFTW plan creation failed");
 
-    std::cout << "  FFTW plans ready  (3D batch, howmany=" << W
-              << ", grid=" << kx << "×" << ky << "×" << kz << ")" << std::endl;
+    std::fill(fft_buf.begin(), fft_buf.end(), value_t(0.0, 0.0));
+
+    std::cout << "  FFTW plans ready  (3D batch, howmany=" << Bs
+              << ", grid=" << kx << "×" << ky << "×" << kz
+              << ", threads=" << omp_get_max_threads() << ")" << std::endl;
 }
 
 
@@ -572,43 +632,59 @@ void SparseMatrixType_kQuant::Multiply_kQuant(const value_t  a,
                                                      value_t  b,
                                                      value_t* y)
 {
-    const int N = 2*Nk * W;
-
-
     SparseMatrixType::Multiply(a, x, b, y);
 
-    if (disorder_x.size()==0 && disorder.empty()) return;
-
-    // Use two separate buffers — fft_buf is used internally by both FFT functions
-    //std::vector<value_t> real_buf(N), tmp(N);   // holds B|x⟩ in real space
-    //std::vector<value_t> k_buf(N);      // holds B†(V·B|x⟩) in k space
-
-
-    Eigen::Map< const Eigen::Vector<std::complex<double>, -1>>  x_eig(x, N);
-    //Eigen::Map< Eigen::Vector<std::complex<double>, -1>>  y_eig(y, N);
-   
-    Eigen::Vector<std::complex<double>, -1> real_buf( N ), k_buf( N ), tmp( N );
-
-  
-    apply_Bdagger_FFT(real_buf.data(), x);    // real_buf = B|x⟩
-    
-    //apply_disorder(real_buf.data(),tmp.data()); //MAGNETIC DISORDER
-
-    for (int i = 0; i < N; ++i)
-       real_buf[i] *= disorder[i];     // real_buf = V·B|x⟩  (or -0.1 for test)
-      
-
-    apply_B_FFT(k_buf.data(), real_buf.data());  // k_buf = B†V·B|x⟩
-
-
-    
-      
-    for (int i = 0; i < N; ++i){
-
-      y[i] += a * k_buf[i];
+    if (disorder.empty()) {
+        // The magnetic-disorder path (apply_disorder) is not wired in here yet;
+        // fail loudly instead of silently dropping it.
+        if (disorder_x.size() != 0)
+            throw std::runtime_error("Multiply_kQuant: magnetic disorder set but only "
+                                     "scalar `disorder` is applied; wire apply_disorder first.");
+        return;
     }
 
-    
+    if (!plan_fwd || !plan_bwd)
+        throw std::runtime_error("PrepareFFT() must be called before Multiply.");
+
+    // Disorder term  y += a · B† V B x, fused into three parallel passes over
+    // fft_buf (no temporaries):
+    //   1. fft_buf = conj(atom) · x          then FORWARD FFT  → real space
+    //   2. fft_buf *= V                      then BACKWARD FFT → k space
+    //   3. y += a · atom · fft_buf
+    // atom_phases carry 1/√Nk each, so the unnormalised FFT pair is exact.
+    const int N = Nk * Bs;
+    value_t* buf = fft_buf.data();
+    const value_t* ph = atom_phases_full.data();
+    const value_t* V = disorder.data();
+
+    #pragma omp parallel for schedule(static)
+    for (int i = 0; i < N; ++i)
+        buf[i] = kq_cmul_conj(ph[i], x[i]);
+
+    fftw_execute(plan_fwd);
+
+    if ((int)disorder.size() == N) {
+        #pragma omp parallel for schedule(static)
+        for (int i = 0; i < N; ++i)
+            buf[i] = kq_cmul(buf[i], V[i]);
+    }
+    else if ((int)disorder.size() == Nk * W) {
+        // One potential per (cell, orbital), shared by all spin blocks.
+        #pragma omp parallel for schedule(static)
+        for (int iR = 0; iR < Nk; ++iR)
+            for (int j = 0; j < Bs; ++j)
+                buf[iR * Bs + j] = kq_cmul(buf[iR * Bs + j], V[iR * W + j % W]);
+    }
+    else
+        throw std::runtime_error("Multiply_kQuant: disorder has size " +
+                                 std::to_string(disorder.size()) + ", expected " +
+                                 std::to_string(N) + " or " + std::to_string(Nk * W));
+
+    fftw_execute(plan_bwd);
+
+    #pragma omp parallel for schedule(static)
+    for (int i = 0; i < N; ++i)
+        y[i] += kq_cmul(a, kq_cmul(ph[i], buf[i]));
 }
 
 

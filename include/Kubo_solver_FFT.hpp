@@ -9,6 +9,8 @@
 #include"sparse_matrix.hpp"
 #include"chebyshev_moments.hpp"
 #include"chebyshev_solver.hpp"
+#include<fftw3.h>
+#include<vector>
 
 
 namespace chebyshev 
@@ -315,7 +317,7 @@ class Kubo_solver_FFT_kQuant{
     : R_(R), M_(M), num_sections_(num_sections), nump_(nump), section_size_(0),
 	    sym_formula_(sym_formula), chebVecL_(&chebVecL), chebVecR_(&chebVecR), outputfilename_(outputfilename) {};
 
-        ~Kubo_solver_FFT_kQuant(){};
+        ~Kubo_solver_FFT_kQuant(){ if( bastin_plan_ ) fftw_destroy_plan( bastin_plan_ ); };
   
         void compute( SparseMatrixType &, SparseMatrixType &, qstates::generator& );
 
@@ -336,7 +338,7 @@ class Kubo_solver_FFT_kQuant{
 
 
         inline
-	chebyshev::Vectors_sliced_kQuant Hamiltonian(){return *chebVecL_; };
+	chebyshev::Vectors_sliced_kQuant& Hamiltonian(){return *chebVecL_; }; // by reference: a copy re-runs SetInitVectors (alloc + H multiply)
 
         inline
 	std::string& OutputFilename(){return outputfilename_;};
@@ -396,6 +398,12 @@ class Kubo_solver_FFT_kQuant{
         chebyshev::Vectors_sliced_kQuant *chebVecL_, *chebVecR_;
 
         std::string outputfilename_;
+
+        // Batched (howmany = 8) 1D plan used by Bastin_FFTs. Built once with
+        // FFTW_MEASURE, then executed by every thread on its own buffers via
+        // fftw_execute_dft (thread safe).
+        fftw_plan bastin_plan_ = nullptr;
+        int bastin_plan_nump_ = 0;
 
         friend class Kubo_solver_FFT_postProcess_dup_dup;
 };
