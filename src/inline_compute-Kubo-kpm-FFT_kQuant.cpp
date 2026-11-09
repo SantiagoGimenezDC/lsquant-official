@@ -4,6 +4,8 @@
 #include <fstream>  /* for std::ofstream and std::ifstream functions classes*/
 #include <stdlib.h>
 #include <chrono>
+#include <vector>
+#include <cstdlib>
 
 #include "kpm_noneqop.hpp" //Message functions
 #include "chebyshev_moments.hpp"
@@ -23,7 +25,29 @@ void printWelcomeMessage();
 }
 int main(int argc, char *argv[])
 {
-	if ( argc < 5 || argc > 7 )
+	// Optional flags (any position):  --dis-seed N  --rv-seed N
+	// Everything else is positional:  Label numMom R dis_amplitude [dis_type] [dis_conc]
+	const unsigned int DEFAULT_DIS_SEED = 42, DEFAULT_RV_SEED = 3;
+	unsigned int dis_seed = DEFAULT_DIS_SEED, rv_seed = DEFAULT_RV_SEED;
+	std::vector<std::string> args;
+	for ( int i = 1; i < argc; i++ )
+	{
+		const std::string arg = argv[i];
+		if ( arg == "--dis-seed" || arg == "--rv-seed" )
+		{
+			if ( i + 1 >= argc )
+			{
+				std::cerr << "ERROR: " << arg << " needs a value" << std::endl;
+				return 1;
+			}
+			const unsigned int value = std::stoul( argv[++i] );
+			( arg == "--dis-seed" ? dis_seed : rv_seed ) = value;
+		}
+		else
+			args.push_back( arg );
+	}
+
+	if ( args.size() < 4 || args.size() > 6 )
 	{
 		kpmKubo::printHelpMessage();
 		return 0;
@@ -32,14 +56,14 @@ int main(int argc, char *argv[])
 		kpmKubo::printWelcomeMessage();
 	
 	const std::string
-		LABEL = argv[1],
-	  S_NUM_MOM = argv[2],
-	  S_NUM_R = argv[3],
-	  S_DIS_STR = argv[4];
+		LABEL = args[0],
+	  S_NUM_MOM = args[1],
+	  S_NUM_R = args[2],
+	  S_DIS_STR = args[3];
 
 	// Optional: disorder type (default anderson) and concentration (magnetic types).
-	const std::string DIS_TYPE   = ( argc > 5 ) ? argv[5] : "anderson";
-	const std::string S_DIS_CONC = ( argc > 6 ) ? argv[6] : "";
+	const std::string DIS_TYPE   = ( args.size() > 4 ) ? args[4] : "anderson";
+	const std::string S_DIS_CONC = ( args.size() > 5 ) ? args[5] : "";
 
 	if ( DIS_TYPE != "anderson" && DIS_TYPE != "zmag" && DIS_TYPE != "rmag" )
 	{
@@ -56,13 +80,13 @@ int main(int argc, char *argv[])
 	}
 
 	
-	const int numMoms= atoi(argv[2]);
+	const int numMoms= atoi(S_NUM_MOM.c_str());
 
-	int R = atoi(argv[3]);
+	int R = atoi(S_NUM_R.c_str());
 	//R=1;
 	
         int num_sections = 1, nump = 10*numMoms;
-        const double disorder_amplitude =  std::stod(argv[4]);
+        const double disorder_amplitude =  std::stod(S_DIS_STR);
 	const double disorder_concentration = S_DIS_CONC.empty() ? 0.0 : std::stod(S_DIS_CONC);
 
 	chebyshev::formula sym_formula = chebyshev::KUBO_BASTIN;
@@ -120,20 +144,20 @@ int main(int argc, char *argv[])
         {
             std::cout << "\nGenerating Anderson disorder  W = "
                       << disorder_amplitude << " eV ..." << std::endl;
-            HAM.GenerateAndersonDisorder(disorder_amplitude);
+            HAM.GenerateAndersonDisorder(disorder_amplitude, dis_seed);
         }
         else if ( DIS_TYPE == "zmag" )
         {
             std::cout << "\nGenerating z-magnetic disorder  strength = " << disorder_amplitude
                       << " eV, concentration = " << disorder_concentration << " ..." << std::endl;
-            HAM.Generate_zMagneticDisorder(disorder_amplitude, disorder_concentration, 100042);
+            HAM.Generate_zMagneticDisorder(disorder_amplitude, disorder_concentration, dis_seed);
         }
         else // rmag
         {
             std::cout << "\nGenerating random-direction magnetic disorder  strength = "
                       << disorder_amplitude << " eV, concentration = "
                       << disorder_concentration << " ..." << std::endl;
-            HAM.Generate_RdirMagneticDisorder(disorder_amplitude, disorder_concentration, 3042,
+            HAM.Generate_RdirMagneticDisorder(disorder_amplitude, disorder_concentration, dis_seed,
                                               "operators/" + LABEL + ".orbital_map.dat");
         }
     }
@@ -210,7 +234,11 @@ int main(int argc, char *argv[])
 	//Factory state_factory ;
 
 	//Compute the chebyshev expansion table
-	qstates::generator gen;
+	qstates::generator gen;   // its constructor calls srand(3)
+	// Seed the random vectors last, so disorder generation (Anderson uses
+	// rand() too) cannot shift them. Default 3 = previous behaviour.
+	std::srand( rv_seed );
+	std::cout << "Disorder seed: " << dis_seed << "   Random-vector seed: " << rv_seed << std::endl;
 
 	// Output name records the disorder type (and concentration for magnetic types).
 	std::string dis_tag;
@@ -218,6 +246,10 @@ int main(int argc, char *argv[])
 	else if ( DIS_TYPE == "anderson" )    dis_tag = "_Anderson";
 	else if ( DIS_TYPE == "zmag" )        dis_tag = "_zMagnetic_disConc" + S_DIS_CONC;
 	else                                  dis_tag = "_RdirMagnetic_disConc" + S_DIS_CONC;
+
+	// Seeds are only tagged when not the default, so default names are unchanged.
+	if ( disorder_amplitude > 0.0 && dis_seed != DEFAULT_DIS_SEED ) dis_tag += "_disSeed" + std::to_string(dis_seed);
+	if ( rv_seed != DEFAULT_RV_SEED )                               dis_tag += "_rvSeed"  + std::to_string(rv_seed);
 
 	std::string outputfilename="Bastin_FFT_V1-V2_"+LABEL+"KPM_M"+S_NUM_MOM+"x"+S_NUM_MOM+"_disAmp"+S_DIS_STR+dis_tag+".conductivity";
 
@@ -244,6 +276,11 @@ void kpmKubo::printHelpMessage()
 		  << "    rmag      random-direction magnetic impurities per atom; needs dis_concentration" << std::endl
 		  << "              and operators/<Label>.orbital_map.dat" << std::endl
 		  << "  Magnetic types need a spinful matrix with blocked spin layout (rank = 2*Nk*W)." << std::endl
+		  << std::endl
+		  << "  Optional flags (any position):" << std::endl
+		  << "    --dis-seed N   disorder seed       (default 42)" << std::endl
+		  << "    --rv-seed N    random-vector seed  (default 3)" << std::endl
+		  << "  Non-default seeds are added to the output name (_disSeedN, _rvSeedN)." << std::endl
 		  << std::endl;
 	std::cout << "Label will be used to look for Label.Ham, Label.Op1 and Label.Op2" << std::endl;
 	std::cout << "Op1 and Op2 will be used to located the sparse matrix file of two operators for the correlation" << std::endl;
