@@ -23,7 +23,7 @@ void printWelcomeMessage();
 }
 int main(int argc, char *argv[])
 {
-	if ( !( argc == 5) )
+	if ( argc < 5 || argc > 7 )
 	{
 		kpmKubo::printHelpMessage();
 		return 0;
@@ -36,7 +36,24 @@ int main(int argc, char *argv[])
 	  S_NUM_MOM = argv[2],
 	  S_NUM_R = argv[3],
 	  S_DIS_STR = argv[4];
-	  //S_DIS_CONC = argv[5];
+
+	// Optional: disorder type (default anderson) and concentration (magnetic types).
+	const std::string DIS_TYPE   = ( argc > 5 ) ? argv[5] : "anderson";
+	const std::string S_DIS_CONC = ( argc > 6 ) ? argv[6] : "";
+
+	if ( DIS_TYPE != "anderson" && DIS_TYPE != "zmag" && DIS_TYPE != "rmag" )
+	{
+		std::cerr << "ERROR: unknown disorder type '" << DIS_TYPE
+		          << "' (use anderson, zmag or rmag)" << std::endl;
+		kpmKubo::printHelpMessage();
+		return 1;
+	}
+	if ( DIS_TYPE != "anderson" && S_DIS_CONC.empty() )
+	{
+		std::cerr << "ERROR: disorder type '" << DIS_TYPE
+		          << "' needs a concentration as 6th argument" << std::endl;
+		return 1;
+	}
 
 	
 	const int numMoms= atoi(argv[2]);
@@ -46,7 +63,7 @@ int main(int argc, char *argv[])
 	
         int num_sections = 1, nump = 10*numMoms;
         const double disorder_amplitude =  std::stod(argv[4]);
-	//const double disorder_concentration = std::stod(argv[5]);
+	const double disorder_concentration = S_DIS_CONC.empty() ? 0.0 : std::stod(S_DIS_CONC);
 
 	chebyshev::formula sym_formula = chebyshev::KUBO_BASTIN;
 	//chebyshev::Moments Hamiltonian_dummyMoms; //load number of moments
@@ -85,19 +102,40 @@ int main(int argc, char *argv[])
         HAM.PrepareFFT();
     }
 
-    // ── Anderson disorder ─────────────────────────────────────────────────────
+    // ── Disorder ──────────────────────────────────────────────────────────────
+    // The raw amplitude is used here; it is rescaled to the adimensionalised
+    // units of H_bar (V/a, a = HalfWidth) once BandWidth is known (see below).
     if (disorder_amplitude > 0.0)
     {
-        std::cout << "\nGenerating Anderson disorder  W = "
-                  << disorder_amplitude << " eV ..." << std::endl;
-        // Rescale amplitude to the adimensionalised units of H_bar:
-        // disorder enters as V/a where a = HalfWidth (set below).
-        // We pass the raw amplitude here; it will be rescaled after
-        // BandWidth is set (see below).
-        HAM.GenerateAndersonDisorder(disorder_amplitude);
-	//HAM.Generate_zMagneticDisorder(disorder_amplitude,disorder_concentration, 100042);
-	//HAM.Generate_RdirMagneticDisorder(disorder_amplitude,disorder_concentration, 3042, "operators/"+LABEL+".orbital_map.dat");
+        const bool spinful = ( HAM.rank() == 2 * HAM.Nk * HAM.W );
+        if ( DIS_TYPE != "anderson" && !spinful )
+        {
+            std::cerr << "ERROR: magnetic disorder needs a spinful matrix with blocked "
+                      << "spin layout (rank = 2*Nk*W); got rank " << HAM.rank()
+                      << ", Nk*W = " << HAM.Nk * HAM.W << std::endl;
+            return 1;
+        }
 
+        if ( DIS_TYPE == "anderson" )
+        {
+            std::cout << "\nGenerating Anderson disorder  W = "
+                      << disorder_amplitude << " eV ..." << std::endl;
+            HAM.GenerateAndersonDisorder(disorder_amplitude);
+        }
+        else if ( DIS_TYPE == "zmag" )
+        {
+            std::cout << "\nGenerating z-magnetic disorder  strength = " << disorder_amplitude
+                      << " eV, concentration = " << disorder_concentration << " ..." << std::endl;
+            HAM.Generate_zMagneticDisorder(disorder_amplitude, disorder_concentration, 100042);
+        }
+        else // rmag
+        {
+            std::cout << "\nGenerating random-direction magnetic disorder  strength = "
+                      << disorder_amplitude << " eV, concentration = "
+                      << disorder_concentration << " ..." << std::endl;
+            HAM.Generate_RdirMagneticDisorder(disorder_amplitude, disorder_concentration, 3042,
+                                              "operators/" + LABEL + ".orbital_map.dat");
+        }
     }
     else
         std::cout << "\nNo disorder (amplitude = 0)." << std::endl;
@@ -132,7 +170,8 @@ int main(int argc, char *argv[])
     
     // Rescale disorder to adimensionalised units now that BandWidth is known.
     // H_bar = (H - b)/a  →  V_bar = V/a  →  disorder entries must be /a too.
-    if (disorder_amplitude > 0.0 && !HAM.disorder.empty())
+    // (Covers both the scalar `disorder` vector and the magnetic disorder_x/y/z.)
+    if (disorder_amplitude > 0.0)
     {
         const double a = half_width;
         std::cout << "Rescaling disorder by 1/a = " << 1.0/a << std::endl;
@@ -173,7 +212,14 @@ int main(int argc, char *argv[])
 	//Compute the chebyshev expansion table
 	qstates::generator gen;
 
-	std::string outputfilename="Bastin_FFT_V1-V2_"+LABEL+"KPM_M"+S_NUM_MOM+"x"+S_NUM_MOM+"_disAmp"+S_DIS_STR+"_Anderson.conductivity";
+	// Output name records the disorder type (and concentration for magnetic types).
+	std::string dis_tag;
+	if ( disorder_amplitude <= 0.0 )      dis_tag = "_noDisorder";
+	else if ( DIS_TYPE == "anderson" )    dis_tag = "_Anderson";
+	else if ( DIS_TYPE == "zmag" )        dis_tag = "_zMagnetic_disConc" + S_DIS_CONC;
+	else                                  dis_tag = "_RdirMagnetic_disConc" + S_DIS_CONC;
+
+	std::string outputfilename="Bastin_FFT_V1-V2_"+LABEL+"KPM_M"+S_NUM_MOM+"x"+S_NUM_MOM+"_disAmp"+S_DIS_STR+dis_tag+".conductivity";
 
 	
 	chebyshev::Kubo_solver_FFT_kQuant solver(R, numMoms,  num_sections, nump, sym_formula, chebVec, chebVec_2,  outputfilename);
@@ -189,8 +235,16 @@ int main(int argc, char *argv[])
 
 void kpmKubo::printHelpMessage()
 {
-	std::cout << "The program should be called with the following options: Label numMom num_states (default 1)" << std::endl
-			  << std::endl;
+	std::cout << "The program should be called with the following options:" << std::endl
+		  << "  Label numMom num_states dis_amplitude [dis_type] [dis_concentration]" << std::endl
+		  << std::endl
+		  << "  dis_type (default anderson):" << std::endl
+		  << "    anderson  on-site Anderson disorder, amplitude in eV" << std::endl
+		  << "    zmag      z-oriented magnetic impurities (+v up, -v down); needs dis_concentration" << std::endl
+		  << "    rmag      random-direction magnetic impurities per atom; needs dis_concentration" << std::endl
+		  << "              and operators/<Label>.orbital_map.dat" << std::endl
+		  << "  Magnetic types need a spinful matrix with blocked spin layout (rank = 2*Nk*W)." << std::endl
+		  << std::endl;
 	std::cout << "Label will be used to look for Label.Ham, Label.Op1 and Label.Op2" << std::endl;
 	std::cout << "Op1 and Op2 will be used to located the sparse matrix file of two operators for the correlation" << std::endl;
 	std::cout << "numMom will be used to set the number of moments in the chebyshev table" << std::endl;

@@ -634,17 +634,49 @@ void SparseMatrixType_kQuant::Multiply_kQuant(const value_t  a,
 {
     SparseMatrixType::Multiply(a, x, b, y);
 
-    if (disorder.empty()) {
-        // The magnetic-disorder path (apply_disorder) is not wired in here yet;
-        // fail loudly instead of silently dropping it.
-        if (disorder_x.size() != 0)
-            throw std::runtime_error("Multiply_kQuant: magnetic disorder set but only "
-                                     "scalar `disorder` is applied; wire apply_disorder first.");
-        return;
-    }
+    const bool magnetic = disorder_x.size() != 0;
+    if (disorder.empty() && !magnetic) return;   // clean system: H_k only
 
     if (!plan_fwd || !plan_bwd)
         throw std::runtime_error("PrepareFFT() must be called before Multiply.");
+
+    if (magnetic) {
+        // Magnetic disorder  y += a · B† (σ·V) B x  (Generate_RdirMagneticDisorder).
+        // σ·V couples the up/down components of each orbital, so it is applied
+        // out of place by apply_disorder between the two Bloch transforms.
+        // Requires the blocked spin layout ik*2W + spin*W + α.
+        if (Bs != 2 * W)
+            throw std::runtime_error("Multiply_kQuant: magnetic disorder needs a spinful "
+                                     "matrix (per-k block 2W); got block " + std::to_string(Bs) +
+                                     " with W=" + std::to_string(W));
+        const int N = Nk * Bs;
+        if ((int)dis_real_buf.size() != N) {
+            dis_real_buf.assign(N, value_t(0.0, 0.0));
+            dis_tmp_buf.assign(N, value_t(0.0, 0.0));
+        }
+        value_t* real_buf = dis_real_buf.data();
+        value_t* tmp      = dis_tmp_buf.data();
+
+        apply_Bdagger_FFT(real_buf, x);          // real_buf = B|x⟩ (real space)
+        apply_disorder(real_buf, tmp);           // tmp = (σ·V) B|x⟩
+
+        if (!disorder.empty()) {                 // optional scalar part on top
+            if ((int)disorder.size() != N)
+                throw std::runtime_error("Multiply_kQuant: scalar disorder must have the full "
+                                         "size when combined with magnetic disorder");
+            const value_t* V = disorder.data();
+            #pragma omp parallel for schedule(static)
+            for (int i = 0; i < N; ++i)
+                tmp[i] += kq_cmul(V[i], real_buf[i]);
+        }
+
+        apply_B_FFT(real_buf, tmp);              // real_buf = B† (σ·V) B|x⟩ (k space)
+
+        #pragma omp parallel for schedule(static)
+        for (int i = 0; i < N; ++i)
+            y[i] += kq_cmul(a, real_buf[i]);
+        return;
+    }
 
     // Disorder term  y += a · B† V B x, fused into three parallel passes over
     // fft_buf (no temporaries):

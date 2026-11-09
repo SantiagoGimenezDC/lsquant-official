@@ -221,7 +221,9 @@ public:
 
     // ── Multiply (overrides parent) ───────────────────────────────────────────
     // Computes:  y = a * (H_k + B† V B) * x + b * y
-    // If disorder is empty, falls back to H_k only (pure k-space).
+    //   V = diag(disorder)                (Anderson / z-magnetic, scalar per orbital)
+    //   V = σ·(disorder_x, _y, _z)        (Rdir magnetic, via apply_disorder)
+    // If neither is set, falls back to H_k only (pure k-space).
 
     virtual void Multiply(const value_t a, const value_t * vec1, const value_t b, value_t * vec2) override { this->Multiply_kQuant(a,  vec1,  b,  vec2); } ;
     virtual void Multiply(const value_t a, const vector_t& vec1, const value_t b, vector_t& vec2) override { this->Multiply_kQuant(a,  vec1,  b,  vec2); } ;
@@ -259,6 +261,8 @@ private:
     int Bs = 0;
     // atom_phases expanded to the full Nk*Bs layout (spin copies share the phase).
     std::vector<value_t> atom_phases_full;
+    // Scratch buffers for the magnetic-disorder path (allocated on first use).
+    std::vector<value_t> dis_real_buf, dis_tmp_buf;
 
     inline value_t lattice_phase(int ik, int iR) const
     {
