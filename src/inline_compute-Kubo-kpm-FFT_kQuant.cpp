@@ -221,7 +221,7 @@ int main(int argc, char *argv[])
 
 	std::cout << "/*----------------------------------------------------------------------------------------*/" ;
 	std::cout << std::endl<< std::endl;
-	std::cout << "          THIS SOLVER & POSTPROCESS are TWEAKED FOR THE BISMUTHENE CASE ONLY!!!!!!         " << std::endl << std::endl;
+	std::cout << "          THIS POSTPROCESS is TWEAKED FOR THE BISMUTHENE CASE ONLY!!!!!!         " << std::endl << std::endl;
 	std::cout << "/*----------------------------------------------------------------------------------------*/" ;
 	std::cout << std::endl;
 
