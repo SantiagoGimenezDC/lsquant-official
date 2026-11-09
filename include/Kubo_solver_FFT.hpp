@@ -487,7 +487,7 @@ class Kubo_solver_FFT_kQuant_nonOrth_ChrisVel{
 
 
         inline
-	chebyshev::Vectors_sliced_kQuant_nonOrth_ChrisVel Hamiltonian(){return *chebVecL_; };
+	chebyshev::Vectors_sliced_kQuant_nonOrth_ChrisVel& Hamiltonian(){return *chebVecL_; }; // by reference: a copy re-runs SetInitVectors (alloc + H multiply)
 
         inline
 	std::string& OutputFilename(){return outputfilename_;};

@@ -479,18 +479,27 @@ public:
     // disorder[iR*W + α] = on-site potential at orbital α in unit cell iR
     // Real-valued physically, but stored as complex for generality.
     std::vector<value_t> disorder;
+    // Random-direction magnetic disorder, indexed per spatial orbital iR*W + α
+    // (sized rank(), only the first Nk*W entries are used), applied as σ·V.
+    Eigen::VectorXcd disorder_x, disorder_y, disorder_z;
 
     void SetDisorder(const std::vector<value_t>& dis)
     {
-        assert((int)dis.size() == Nk * W);
+        // Nk*W (shared by both spin blocks) or the full rank().
+        assert((int)dis.size() == Nk * W || (int)dis.size() == this->rank());
         disorder = dis;
     }
+
+    // k-grid size and orbitals per spin, e.g. from the BLOCH_PHASES header.
+    // Must be called before set_S (the S^-1, S^-1/2 preconditioners use them).
+    void set_layout(int nk, int norbs) { nk_ = nk; norbs_ = norbs; }
 
     // Fill disorder with uniform random values in [-amplitude/2, +amplitude/2]
     // per unit cell (same value for all W orbitals in a cell, standard Anderson)
     void GenerateAndersonDisorder(double amplitude, unsigned int seed = 42);
     void Generate_zMagneticDisorder(double, double, unsigned int );
-    void Generate_RdirMagneticDisorder(double, double, unsigned int );
+    void Generate_RdirMagneticDisorder(double, double, unsigned int, const std::string& );
+    void apply_disorder(const value_t*, value_t* );
 
   // ── I/O ──────────────────────────────────────────────────────────────────
     bool ReadPhasesFromFile(const std::string& filename);
@@ -628,10 +637,16 @@ private:
   int Nmoms_, norbs_, nk_;
   //IschoPreconditioner_block<indexType> *M_;
 
-    // Working buffer for the disorder application (size Nk*W, FFTW-aligned)
+    // Working buffer for the disorder application (size Nk*Bs)
     std::vector<value_t> fft_buf;
     fftw_plan            plan_fwd;   // B†: k→real  (FFTW_FORWARD)
     fftw_plan            plan_bwd;   // B:  real→k  (FFTW_BACKWARD)
+
+    // Per-k block used by the FFT path: rank()/Nk (= 2W for the spinful,
+    // blocked layout ik*2W + spin*W + α).
+    int Bs = 0;
+    std::vector<value_t> atom_phases_full;          // atom_phases expanded to Nk*Bs
+    std::vector<value_t> hk_buf, dis_real_buf, dis_tmp_buf;   // Multiply scratch
 
     inline value_t lattice_phase(int ik, int iR) const
     {

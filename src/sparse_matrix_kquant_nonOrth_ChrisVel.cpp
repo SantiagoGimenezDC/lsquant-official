@@ -6,6 +6,25 @@
 #include <iostream>
 #include "linear_algebra.hpp"
 #include <random>
+#include <algorithm>
+#include <sstream>
+#include <fstream>
+#include <omp.h>
+
+namespace {
+// Plain real-arithmetic complex products (avoid __muldc3 in hot loops).
+inline std::complex<double> kq_cmul(const std::complex<double> a, const std::complex<double> b)
+{
+    return { a.real() * b.real() - a.imag() * b.imag(),
+             a.real() * b.imag() + a.imag() * b.real() };
+}
+// conj(a) * b
+inline std::complex<double> kq_cmul_conj(const std::complex<double> a, const std::complex<double> b)
+{
+    return { a.real() * b.real() + a.imag() * b.imag(),
+             a.real() * b.imag() - a.imag() * b.real() };
+}
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // SparseMatrixType_kQuant_nonOrth::ReadPhasesFromFile
@@ -170,14 +189,19 @@ void SparseMatrixType_kQuant::apply_B_FFT( value_t* out, const value_t* in)
 	}*/
 void SparseMatrixType_kQuant_nonOrth_ChrisVel::apply_B_FFT(value_t* out, const value_t* in)
 {
-    int N = this->numRows();//Nk * W;
+    const int N = Nk * Bs;
+    value_t* buf = fft_buf.data();
+    const value_t* ph = atom_phases_full.data();
+
+    #pragma omp parallel for schedule(static)
     for (int i = 0; i < N; ++i)
-        fft_buf[i] = in[i];
+        buf[i] = in[i];
 
     fftw_execute(plan_bwd);   // computes exact lattice sum, no normalization
 
+    #pragma omp parallel for schedule(static)
     for (int i = 0; i < N; ++i)
-        out[i] = atom_phases[i] * fft_buf[i];   // atom_phases already has 1/√Nk
+        out[i] = kq_cmul(ph[i], buf[i]);   // atom_phases already has 1/√Nk
 }
 
 
@@ -210,17 +234,21 @@ void SparseMatrixType_kQuant_nonOrth_ChrisVel::apply_Bdagger(value_t* out, const
 
 void SparseMatrixType_kQuant_nonOrth_ChrisVel::apply_Bdagger_FFT(value_t* out, const value_t* in)
 {
-  int N = this->numRows();//Nk * W;
+    const int N = Nk * Bs;
+    value_t* buf = fft_buf.data();
+    const value_t* ph = atom_phases_full.data();
 
     // premultiply by conj(atom_phases)  (first part of B†)
+    #pragma omp parallel for schedule(static)
     for (int i = 0; i < N; ++i)
-        fft_buf[i] = std::conj(atom_phases[i]) * in[i];
+        buf[i] = kq_cmul_conj(ph[i], in[i]);
 
     // FORWARD FFT: exp(-i·2π·k·n/N)  →  completes B†, no normalisation needed
     fftw_execute(plan_fwd);
 
+    #pragma omp parallel for schedule(static)
     for (int i = 0; i < N; ++i)
-        out[i] = fft_buf[i];
+        out[i] = buf[i];
 }
 
 /*
@@ -258,32 +286,62 @@ void SparseMatrixType_kQuant::apply_Bdagger_FFT( value_t* out, const value_t* in
 // ─────────────────────────────────────────────────────────────────────────────
 void SparseMatrixType_kQuant_nonOrth_ChrisVel::PrepareFFT()
 {
-    int N = this->numRows();//Nk * W;
-    // Allocate FFTW-aligned buffer so SIMD paths are used
-    fft_buf.resize(N);
+    // Full per-k block: W (spinless) or 2W (spinful, layout ik*2W + s*W + α).
+    if (this->numRows() % Nk != 0)
+        throw std::runtime_error("SparseMatrixType_kQuant_nonOrth_ChrisVel: matrix size is not a multiple of Nk");
+    Bs = this->numRows() / Nk;
+    if (Bs % W != 0)
+        throw std::runtime_error("SparseMatrixType_kQuant_nonOrth_ChrisVel: per-k block size is not a multiple of W");
+    if (Bs != W)
+        std::cout << "  Per-k block = " << Bs << " = " << Bs / W << " x W"
+                  << " (assuming layout ik*Bs + spin*W + alpha)" << std::endl;
+
+    const int N = Nk * Bs;
+    fft_buf.assign(N, value_t(0.0, 0.0));
+
+    // Expand the atom phases once: both spin copies of orbital α share its phase.
+    atom_phases_full.resize(N);
+    for (int ik = 0; ik < Nk; ++ik)
+        for (int j = 0; j < Bs; ++j)
+            atom_phases_full[ik * Bs + j] = atom_phases[ik * W + j % W];
+
+    // Multi-threaded FFTW for the 3D batch transforms (we link -lfftw3_omp).
+    static bool fftw_threads_ready = false;
+    if (!fftw_threads_ready) {
+        fftw_init_threads();
+        fftw_threads_ready = true;
+    }
+    fftw_plan_with_nthreads(omp_get_max_threads());
 
     int n[3]       = {kx, ky, kz};
     fftw_complex* buf = reinterpret_cast<fftw_complex*>(fft_buf.data());
 
-    // Both plans operate in-place on buf with stride=W between elements of
-    // the same transform and distance=1 between consecutive transforms.
+    // In-place plans, stride Bs between elements of one transform and
+    // distance 1 between transforms. Built once, so FFTW_MEASURE pays off
+    // (it overwrites buf, which is re-zeroed afterwards).
     plan_fwd = fftw_plan_many_dft(
-        3, n, W,
-        buf, nullptr, W, 1,
-        buf, nullptr, W, 1,
-        FFTW_FORWARD,  FFTW_ESTIMATE);
+        3, n, Bs,
+        buf, nullptr, Bs, 1,
+        buf, nullptr, Bs, 1,
+        FFTW_FORWARD,  FFTW_MEASURE);
 
     plan_bwd = fftw_plan_many_dft(
-        3, n, W,
-        buf, nullptr, W, 1,
-        buf, nullptr, W, 1,
-        FFTW_BACKWARD, FFTW_ESTIMATE);
+        3, n, Bs,
+        buf, nullptr, Bs, 1,
+        buf, nullptr, Bs, 1,
+        FFTW_BACKWARD, FFTW_MEASURE);
+
+    // Later plans (per-thread 1D FFTs of the Kubo solver) must be single-threaded.
+    fftw_plan_with_nthreads(1);
 
     if (!plan_fwd || !plan_bwd)
-        throw std::runtime_error("SparseMatrixType_kQuant: FFTW plan creation failed");
+        throw std::runtime_error("SparseMatrixType_kQuant_nonOrth_ChrisVel: FFTW plan creation failed");
 
-    std::cout << "  FFTW plans ready  (3D batch, howmany=" << W
-              << ", grid=" << kx << "×" << ky << "×" << kz << ")" << std::endl;
+    std::fill(fft_buf.begin(), fft_buf.end(), value_t(0.0, 0.0));
+
+    std::cout << "  FFTW plans ready  (3D batch, howmany=" << Bs
+              << ", grid=" << kx << "×" << ky << "×" << kz
+              << ", threads=" << omp_get_max_threads() << ")" << std::endl;
 }
 
 
@@ -351,6 +409,232 @@ void SparseMatrixType_kQuant_nonOrth_ChrisVel::Generate_zMagneticDisorder(
 }
 
 
+// Random-direction magnetic disorder and its application (σ·V per orbital),
+// identical to SparseMatrixType_kQuant so both solvers draw the same disorder.
+void SparseMatrixType_kQuant_nonOrth_ChrisVel::Generate_RdirMagneticDisorder(
+    double strength,
+    double concentration,
+    unsigned int seed,
+    const std::string& orbital_mapping_file)
+{
+    disorder_x.resize(this->numRows());
+    disorder_y.resize(this->numRows());
+    disorder_z.resize(this->numRows());
+
+    disorder_x.setZero();
+    disorder_y.setZero();
+    disorder_z.setZero();
+
+    // ------------------------------------------------------------
+    // Read orbital mapping for ONE unit cell
+    // ------------------------------------------------------------
+
+    struct AtomOrbitals {
+        int atom_index;
+        std::string species;
+        std::vector<int> orbitals;
+    };
+
+    std::vector<AtomOrbitals> atoms;
+
+    std::ifstream file(orbital_mapping_file);
+
+    if (!file.is_open()) {
+        throw std::runtime_error(
+            "Could not open orbital mapping file: " +
+            orbital_mapping_file);
+    }
+
+    std::string line;
+
+    while (std::getline(file, line)) {
+
+        if (line.empty() || line[0] == '#')
+            continue;
+
+        std::stringstream ss(line);
+
+        AtomOrbitals atom;
+        int norb;
+
+        ss >> atom.atom_index;
+        ss >> atom.species;
+        ss >> norb;
+
+        atom.orbitals.resize(norb);
+
+        for (int i = 0; i < norb; ++i)
+            ss >> atom.orbitals[i];
+
+        atoms.push_back(atom);
+    }
+
+    file.close();
+
+    // ------------------------------------------------------------
+    // Check that mapping agrees with W
+    // ------------------------------------------------------------
+
+    int total_orbitals = 0;
+
+    for (const auto& atom : atoms)
+        for (int orbital : atom.orbitals)
+            total_orbitals = std::max(total_orbitals, orbital + 1);
+
+    if (total_orbitals != W) {
+        throw std::runtime_error(
+            "Orbital mapping is inconsistent with W: " +
+            std::to_string(total_orbitals) +
+            " != " +
+            std::to_string(W));
+    }
+
+    // ------------------------------------------------------------
+    // Random-number generators
+    // ------------------------------------------------------------
+
+    std::mt19937 gen(seed);
+
+    std::uniform_real_distribution<double> dist(0.0, 1.0);
+    std::uniform_real_distribution<double> phi_dist(
+        0.0, 2.0 * M_PI);
+
+    int n_impurities = 0;
+
+    // ------------------------------------------------------------
+    // Generate disorder over the ENTIRE real-space supercell
+    // ------------------------------------------------------------
+
+    for (int iR = 0; iR < Nk; ++iR) {
+
+        for (const auto& atom : atoms) {
+
+            // Is this particular atom in this particular unit cell
+            // magnetic?
+            if (dist(gen) >= concentration)
+                continue;
+
+            ++n_impurities;
+
+	    
+            // ----------------------------------------------------
+            // One random spin direction for this atom
+            // ----------------------------------------------------
+
+            double cos_theta = 2.0 * dist(gen) - 1.0;
+            double sin_theta =
+	    std::sqrt(1.0 - cos_theta * cos_theta);
+
+            double phi = phi_dist(gen);
+
+            double nx = sin_theta * std::cos(phi);
+            double ny = sin_theta * std::sin(phi);
+            double nz = cos_theta;
+
+	    
+
+
+
+	    /*
+	    // ----------------------------------------------------
+	    // One random spin direction for this atom, biased toward +z.
+	    // Sampled from a von Mises-Fisher distribution on the sphere:
+	    // kappa = 0 recovers your original isotropic sampling; larger
+	    // kappa concentrates directions more tightly around +z, i.e.
+	    // increasingly resembles a coherent exchange field rather than
+	    // pure random-direction disorder.
+	    // ----------------------------------------------------
+	    const double kappa = 3.0; // tune: 0 = isotropic, larger = stronger +z bias
+
+	    double xi = dist(gen); // uniform in [0,1)
+	    double cos_theta;
+	    if (kappa > 1e-8) {
+	      cos_theta = 1.0 + (1.0 / kappa) *
+                std::log(xi + (1.0 - xi) * std::exp(-2.0 * kappa));
+	    } else {
+	      cos_theta = 2.0 * xi - 1.0; // isotropic fallback, same as before
+	    }
+
+	    double sin_theta =
+	      std::sqrt(std::max(0.0, 1.0 - cos_theta * cos_theta)); // guard tiny FP negatives
+	    double phi = phi_dist(gen);
+	    double nx = sin_theta * std::cos(phi);
+	    double ny = sin_theta * std::sin(phi);
+	    double nz = cos_theta;
+	    */
+
+ 
+            // ----------------------------------------------------
+            // Apply SAME moment to every orbital on this atom
+            // ----------------------------------------------------
+
+            for (int alpha : atom.orbitals) {
+
+                int idx = iR * W + alpha;
+
+                disorder_x[idx] =
+                    value_t(strength * nx, 0.0);
+
+                disorder_y[idx] =
+                    value_t(strength * ny, 0.0);
+
+                disorder_z[idx] =
+                    value_t(strength * nz, 0.0);
+            }
+        }
+    }
+
+    std::cout
+        << "  Random magnetic disorder generated:"
+        << " strength=" << strength
+        << " eV, concentration=" << concentration
+        << ", impurities=" << n_impurities
+        << "/" << Nk * atoms.size()
+        << " atoms, seed=" << seed
+        << std::endl;
+}
+
+
+void SparseMatrixType_kQuant_nonOrth_ChrisVel::apply_disorder( const value_t* in, value_t* out)
+{
+    const value_t I(0.0, 1.0);
+
+    #pragma omp parallel for schedule(static)
+    for (int iR = 0; iR < Nk; ++iR) {
+
+        const int spatial_offset = iR * W;
+        const int spin_offset    = iR * 2 * W;
+
+	  
+        for (int alpha = 0; alpha < W; ++alpha) {
+
+
+            const int spatial = spatial_offset + alpha;
+
+            const int up   = spin_offset + alpha;
+            const int down = spin_offset + W + alpha;
+
+            const value_t Vx = disorder_x[spatial];
+            const value_t Vy = disorder_y[spatial];
+            const value_t Vz = disorder_z[spatial];
+
+            // H_mag = Vx*sigma_x + Vy*sigma_y + Vz*sigma_z
+
+	    
+            out[up] =
+                Vz * in[up]
+                + (Vx - I * Vy) * in[down];
+
+            out[down] =
+                (Vx + I * Vy) * in[up]
+                - Vz * in[down];
+        }
+    }
+
+}
+
+
+
 
 
 
@@ -372,37 +656,69 @@ void SparseMatrixType_kQuant_nonOrth_ChrisVel::Multiply_kQuant(const value_t  a,
                                                      value_t  b,
                                                      value_t* y)
 {
-  const int N = numRows();//Nk * W;
+    // y = a * ( H_Löwdin x + B† V B x ) + b * y
+    const int N = numRows();
 
-    //std::vector<value_t> tmp_1(N);
-    std::vector<value_t> tmp_1(N, value_t{0.0, 0.0});
+    if ((int)hk_buf.size() != N)
+        hk_buf.assign(N, value_t(0.0, 0.0));
+    value_t* hx = hk_buf.data();
 
+    this->Hk_clean_nonOrth_Loewdin( x, hx );
 
-    this->Hk_clean_nonOrth_Loewdin( x, tmp_1.data() );
+    const bool magnetic = disorder_x.size() != 0;
 
-    if (!disorder.empty()) {
-      // Use two separate buffers — fft_buf is used internally by both FFT functions
-      std::vector<value_t> real_buf(N);   // holds B|x⟩ in real space
-      std::vector<value_t> k_buf(N);      // holds B†(V·B|x⟩) in k space
+    if (disorder.empty() && !magnetic) {
+        #pragma omp parallel for schedule(static)
+        for (int i = 0; i < N; ++i)
+            y[i] = kq_cmul(a, hx[i]) + kq_cmul(b, y[i]);
+        return;
+    }
 
+    if (!plan_fwd || !plan_bwd || Nk * Bs != N)
+        throw std::runtime_error("PrepareFFT() must be called before Multiply with disorder.");
 
-      apply_Bdagger_FFT(real_buf.data(), x);    // real_buf = B|x⟩
+    if ((int)dis_real_buf.size() != N) {
+        dis_real_buf.assign(N, value_t(0.0, 0.0));
+        dis_tmp_buf.assign(N, value_t(0.0, 0.0));
+    }
+    value_t* real_buf = dis_real_buf.data();
+    value_t* tmp      = dis_tmp_buf.data();
 
-      for (int i = 0; i < N; ++i)
-        real_buf[i] *= disorder[i];     // real_buf = V·B|x⟩  (or -0.1 for test)
-      
-    
-      apply_B_FFT(k_buf.data(), real_buf.data());  // k_buf = B†V·B|x⟩
+    apply_Bdagger_FFT(real_buf, x);              // real_buf = B|x⟩ (real space)
 
-      for (int i = 0; i < N; ++i)
-         y[i] = a * ( k_buf[i] + tmp_1[i] ) + b * y[i];
-
+    if (magnetic) {
+        if (Bs != 2 * W)
+            throw std::runtime_error("Multiply_kQuant: magnetic disorder needs a spinful "
+                                     "matrix (per-k block 2W)");
+        apply_disorder(real_buf, tmp);           // tmp = (σ·V) B|x⟩
     }
     else
-      for (int i = 0; i < N; ++i)
-        y[i] = a * tmp_1[i] + b * y[i];
+        std::fill(tmp, tmp + N, value_t(0.0, 0.0));
 
-    
+    if (!disorder.empty()) {                     // scalar part: tmp += V ∘ B|x⟩
+        const value_t* V = disorder.data();
+        if ((int)disorder.size() == N) {
+            #pragma omp parallel for schedule(static)
+            for (int i = 0; i < N; ++i)
+                tmp[i] += kq_cmul(V[i], real_buf[i]);
+        }
+        else if ((int)disorder.size() == Nk * W) {
+            #pragma omp parallel for schedule(static)
+            for (int iR = 0; iR < Nk; ++iR)
+                for (int j = 0; j < Bs; ++j)
+                    tmp[iR * Bs + j] += kq_cmul(V[iR * W + j % W], real_buf[iR * Bs + j]);
+        }
+        else
+            throw std::runtime_error("Multiply_kQuant: disorder has size " +
+                                     std::to_string(disorder.size()) + ", expected " +
+                                     std::to_string(N) + " or " + std::to_string(Nk * W));
+    }
+
+    apply_B_FFT(real_buf, tmp);                  // real_buf = B† V B|x⟩ (k space)
+
+    #pragma omp parallel for schedule(static)
+    for (int i = 0; i < N; ++i)
+        y[i] = kq_cmul(a, hx[i] + real_buf[i]) + kq_cmul(b, y[i]);
 }
 
 
